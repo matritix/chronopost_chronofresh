@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
-
         <chronorelais>
             <shipping>
                 <!--<tracking_view_url><![CDATA[http://www.chronopost.fr/expedier/inputLTNumbersNoJahia.do?lang=fr_FR&listeNumeros={tracking_number}]]>-->
@@ -248,7 +247,6 @@
                 <price>0</price>
                 <type>I</type>
                 <specificerrmsg>This shipping method is not available. To use this shipping method, please contact us.</specificerrmsg>
-
                 <rdv_config>
                     {
                     "dateRemiseColis_nbJour": "1",
@@ -283,6 +281,140 @@
                 <type>I</type>
                 <specificerrmsg>This shipping method is not available. To use this shipping method, please contact us.</specificerrmsg>
             </chronocclassic>
+			<chronofresh>
+				<active>0</active>
+                <sallowspecific>1</sallowspecific>
+                <specificcountry>FR</specificcountry> <!-- liste des codes pays autorisés séparés par une virgule -->
+                <model>Chronopost\Chronorelais\Model\Carrier\Chronofresh</model>
+                <name>chronopost Food-Livraison express à domicile avant 13H</name>
+                <title>Chronopost</title>
+                <weight_limit>30</weight_limit>
+                <quickcost>1</quickcost>
+                <quickcost_url>https://www.chronopost.fr/quickcost-cxf/QuickcostServiceWS?wsdl</quickcost_url>
+                <logo_url>chronopost.png</logo_url>
+                <debug>0</debug>
+                <deliver_on_saturday>0</deliver_on_saturday>
+                <price>0</price>
+                <type>I</type>
+                <specificerrmsg>This shipping method is not available. To use this shipping method, please contact us.</specificerrmsg> 
+				<config>
+						# Chronopost Food
+						{
+						label: "Chronopost Food-Livraison express à domicile avant 13H",
+						code: "chronofresh",
+						description: "En 24h à votre domicile! Commande livrée le lendemain matin avant 13h.
+						Vous pouvez reprogrammer votre livraison en cas d'absence.",
+						tracking_url: "http://www.fr.chronopost.com/fr/tracking/result?listeNumeros={tracking_number}",
+						destination: "FR,MC",
+						fees: "{table {cart.weight} in 2.00:17.56, 3.00:18.40, 4.00:19.24, 5.00:20.08, 6.00:20.92, 7.00:21.76, 8.00:22.60, 9.00:23.44, 10.00:24.28, 15.00:28.48, 20.00:32.68, 25.00:36.88, 30.00:41.08}",
+						}
+				</config> 
+			</chronofresh>
+			<chronofreshplus>
+				<active>0</active>
+                <sallowspecific>1</sallowspecific>
+                <specificcountry>FR</specificcountry> <!-- liste des codes pays autorisés séparés par une virgule -->
+                <model>Chronopost\Chronorelais\Model\Carrier\Chronofreshplus</model>
+                <name>chronopost Food-Livraison express à domicile avant 13H</name>
+                <title>Chronopost</title>
+                <weight_limit>30</weight_limit>
+                <quickcost>1</quickcost>
+                <quickcost_url>https://www.chronopost.fr/quickcost-cxf/QuickcostServiceWS?wsdl</quickcost_url>
+                <logo_url>chronopost.png</logo_url>
+                <debug>0</debug>
+                <deliver_on_saturday>0</deliver_on_saturday>
+                <price>0</price>
+                <type>I</type>
+                <specificerrmsg>This shipping method is not available. To use this shipping method, please contact us.</specificerrmsg> 
+				<config>
+						# Chronopost Food
+						{
+						label: "Chronopost Food-Livraison express à domicile avant 13H",
+						code: "chronofresh",
+						description: "En 24h à votre domicile! Commande livrée le lendemain matin avant 13h.
+						Vous pouvez reprogrammer votre livraison en cas d'absence.",
+						tracking_url: "http://www.fr.chronopost.com/fr/tracking/result?listeNumeros={tracking_number}",
+						destination: "FR,MC",
+						fees: "{table {cart.weight} in 2.00:17.56, 3.00:18.40, 4.00:19.24, 5.00:20.08, 6.00:20.92, 7.00:21.76, 8.00:22.60, 9.00:23.44, 10.00:24.28, 15.00:28.48, 20.00:32.68, 25.00:36.88, 30.00:41.08}",
+						}
+				</config> 
+			</chronofreshplus>
+			<chronofreshsameday>
+                <active>0</active>
+                <sallowspecific>1</sallowspecific>
+                <specificcountry>FR</specificcountry> <!-- liste des codes pays autorisés séparés par une virgule -->
+                <model>Chronopost\Chronorelais\Model\Carrier\ChronofreshSameday</model>
+                <name>Chronopost Food-Livraison express à domicile le même jour</name>
+                <title>Chronopost</title>
+                <weight_limit>30</weight_limit>
+                <quickcost>1</quickcost>
+                <quickcost_url>https://www.chronopost.fr/quickcost-cxf/QuickcostServiceWS?wsdl</quickcost_url>
+                <logo_url>chronopost.png</logo_url>
+                <debug>0</debug>
+                <deliver_on_saturday>0</deliver_on_saturday>
+                <price>0</price>
+                <type>I</type>
+                <specificerrmsg>This shipping method is not available. To use this shipping method, please contact us.</specificerrmsg>
+                <delivery_time_limit>15:00</delivery_time_limit>
+				<config>
+                    # Chronopost Food
+                    {
+                    label: "Chronopost Food-Livraison express à domicile le même jour",
+                    code: "chronofreshsameday",
+                    description: "Ce soir à votre domicile! Commande livrée ce soir entre 19h et 22h.
+                    Vous pouvez reprogrammer votre livraison en cas d'absence.",
+                    tracking_url: "http://www.fr.chronopost.com/fr/tracking/result?listeNumeros={tracking_number}",
+                    destination: "FR,MC",
+                    fees: "{table {cart.weight} in 2.00:17.56, 3.00:18.40, 4.00:19.24, 5.00:20.08, 6.00:20.92, 7.00:21.76, 8.00:22.60, 9.00:23.44, 10.00:24.28, 15.00:28.48, 20.00:32.68, 25.00:36.88, 30.00:41.08}",
+                    }
+				</config>
+            </chronofreshsameday>
+			<chronofreshsrdv>
+                <active>0</active>
+                <sallowspecific>1</sallowspecific>
+                <specificcountry>FR</specificcountry> <!-- liste des codes pays autorisés séparés par une virgule -->
+                <model>Chronopost\Chronorelais\Model\Carrier\ChronofreshSrdv</model>
+				 <name>Chronopost Food-Livraison sur Rendez-vous</name>
+                 <title>Chronopost</title>
+                <weight_limit>30</weight_limit>
+                <quickcost>1</quickcost>
+                <quickcost_url>https://www.chronopost.fr/quickcost-cxf/QuickcostServiceWS?wsdl</quickcost_url>
+                <logo_url>chronopost.png</logo_url>
+                <debug>0</debug>
+                <price>0</price>
+                <type>I</type>
+                <specificerrmsg>This shipping method is not available. To use this shipping method, please contact us.</specificerrmsg>
+                <rdv_config>
+                    {
+                    "dateRemiseColis_nbJour": "1",
+                    "dateRemiseColis_jour": "0",
+                    "dateRemiseColis_heures": "0",
+                    "dateRemiseColis_minutes": "0",
+                    "niveauTarifaire_show": 1,
+                    "N1_status": "1",
+                    "N2_status": "1",
+                    "N3_status": "1",
+                    "N4_status": "1",
+                    "N1_price": "0",
+                    "N2_price": "0",
+                    "N3_price": "0",
+                    "N4_price": "0"
+                    }
+                </rdv_config>
+				<config>
+					# Chronopost
+					{
+						label: "Chronopost Food-Livraison sur Rendez-vous",
+						code: "chronofreshsrdv",
+						description: "Sur RDV à votre domicile! Commande livrée au jour de votre choix dans un créneau horaire de 2h, jusque 15h.
+						Vous pouvez reprogrammer votre livraison en cas d'absence.",
+						tracking_url: "http://www.fr.chronopost.com/fr/tracking/result?listeNumeros={tracking_number}",
+						destination: "FR",
+						fees: "0",
+					}
+				</config> 
+				<sort_order>10</sort_order>
+			</chronofreshsrdv> 
         </carriers>
     </default>
 </config>

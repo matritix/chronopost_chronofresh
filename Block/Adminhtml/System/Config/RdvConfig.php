@@ -12,7 +12,7 @@ class RdvConfig extends Field
     /**
      * Date constructor.
      * @param Context $context
-     * @param array $data
+     * @param array $data 
      */
     public function __construct(
         Context $context,

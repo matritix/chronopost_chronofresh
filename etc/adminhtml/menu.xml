@@ -6,5 +6,7 @@
         <add id="Chronopost_Chronorelais::sales_bordereau" title="End of day slip" module="Chronopost_Chronorelais" sortOrder="1" parent="Chronopost_Chronorelais::sales" action="chronopost_chronorelais/sales/bordereau" resource="Chronopost_Chronorelais::sales"/>
         <add id="Chronopost_Chronorelais::sales_export" title="Export" module="Chronopost_Chronorelais" sortOrder="2" parent="Chronopost_Chronorelais::sales" action="chronopost_chronorelais/sales/export" resource="Chronopost_Chronorelais::sales"/>
         <add id="Chronopost_Chronorelais::sales_import" title="Import" module="Chronopost_Chronorelais" sortOrder="3" parent="Chronopost_Chronorelais::sales" action="chronopost_chronorelais/sales/import" resource="Chronopost_Chronorelais::sales"/>
+		<add id="Chronopost_Chronorelais::sales_quotas" title="Quotas" module="Chronopost_Chronorelais" sortOrder="4" parent="Chronopost_Chronorelais::sales" action="chronopost_chronorelais/sales/quotas" resource="Chronopost_Chronorelais::sales"/>
+		<add id="Chronopost_Chronorelais::sales_storelocator" title="Storelocator" module="Chronopost_Chronorelais" sortOrder="5" parent="Chronopost_Chronorelais::sales" action="chronopost_chronorelais/sales/storelocator" resource="Chronopost_Chronorelais::sales"/>
     </menu>
 </config>

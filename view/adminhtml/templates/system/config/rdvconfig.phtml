@@ -60,7 +60,7 @@ $_element = $block->getElement();
             <label><?php echo __("Time slot closed") ?></label>
         </td>
         <td class="value">
-            <a href="javascript:;" id="add_creneau" class="add_creneau"><?php echo __("Add a time slot") ?></a>
+            <a href="javascript:;" id="add_creneaufrsh" class="add_creneau"><?php echo __("Add a time slot") ?></a>
         </td>
         <td></td>
     </tr>
@@ -285,7 +285,9 @@ $_element = $block->getElement();
         /** EVENTS **/
 
         /* Add creneaux */
-        $('#add_creneau').click(function(){
+        $('#add_creneaufrsh').click(function(){
+						console.log(idField);
+			console.log(indiceCreneaux);
             addCreneaux({
                 idField : idField,
                 indice : indiceCreneaux

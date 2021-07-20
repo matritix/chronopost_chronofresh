@@ -6,5 +6,7 @@
         <observer name="saveOrderRelaisId" instance="Chronopost\Chronorelais\Observer\saveOrderRelaisId"/>
         <observer name="saveOrderRdvInfo" instance="Chronopost\Chronorelais\Observer\saveOrderRdvInfo"/>
     </event>
-
+    <event name="checkout_submit_all_after">
+        <observer name="chrono_quotas_tout_ca" instance="Chronopost\Chronorelais\Observer\addQuotasShipping" />
+    </event>
 </config>

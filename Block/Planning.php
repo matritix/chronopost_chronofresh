@@ -76,6 +76,14 @@ class Planning extends Template
     public function getRdvConfig() {
         return json_decode($this->_scopeConfig->getValue("carriers/chronopostsrdv/rdv_config"),true);
     }
+	
+	//added fresh
+	/**
+     * @return mixed
+     */
+    public function getRdvFreshConfig() {
+        return json_decode($this->_scopeConfig->getValue("carriers/chronofreshsrdv/rdv_config"),true);
+    }
 
     /**
      * @param $price
@@ -99,6 +107,23 @@ class Planning extends Template
                 if(preg_match('/chronopostsrdv/',$rate->getCode(),$matches,PREG_OFFSET_CAPTURE)) {
                     $ratePrice = $rate->getPrice();
                     $_srdvConfig = json_decode($this->_scopeConfig->getValue("carriers/chronopostsrdv/rdv_config"),true);
+                    if($this->_checkoutSession->getData('chronopostsrdv_creneaux_info')) {
+                        $rdvInfo = json_decode($this->_checkoutSession->getData('chronopostsrdv_creneaux_info'),true);
+                        $ratePrice -= $_srdvConfig[$rdvInfo['tariffLevel']."_price"];
+                    } else {
+                        $minimal_price = '';
+                        for($i = 1; $i <= 4; $i++) {
+                            if($minimal_price === '' || isset($_srdvConfig["N".$i."_price"]) && $_srdvConfig["N".$i."_price"] < $minimal_price) {
+                                $minimal_price = $_srdvConfig["N".$i."_price"];
+                            }
+                        }
+                        $ratePrice -= $minimal_price;
+                    }
+                }
+				//added fresh
+				if(preg_match('/chronofreshsrdv/',$rate->getCode(),$matches,PREG_OFFSET_CAPTURE)) {
+                    $ratePrice = $rate->getPrice();
+                    $_srdvConfig = json_decode($this->_scopeConfig->getValue("carriers/chronofreshsrdv/rdv_config"),true);
                     if($this->_checkoutSession->getData('chronopostsrdv_creneaux_info')) {
                         $rdvInfo = json_decode($this->_checkoutSession->getData('chronopostsrdv_creneaux_info'),true);
                         $ratePrice -= $_srdvConfig[$rdvInfo['tariffLevel']."_price"];

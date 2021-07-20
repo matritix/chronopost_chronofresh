@@ -42,10 +42,14 @@ class PaymentInformationManagement
     ) {
         $quote = $this->_quoteRepository->getActive($cartId);
         $shippingAddress = $quote->getShippingAddress();
-
-        /* Si mode RDV et pas de session : on affiche erreur */
-        if(preg_match('/chronopostsrdv/',$shippingAddress->getShippingMethod(),$matches,PREG_OFFSET_CAPTURE) && !$this->_checkoutSession->getData('chronopostsrdv_creneaux_info')) {
-            throw new StateException(__('Please select an appointment date'));
-        }
+ 
+		if(preg_match('/chrono/',$shippingAddress->getShippingMethod(),$matches,PREG_OFFSET_CAPTURE) && !$this->_checkoutSession->getData('chronopostsrdv_creneaux_info')){
+			throw new StateException(__('Please select an appointment date'));
+			
+		}
+        // if(preg_match('/chronopostsrdv/',$shippingAddress->getShippingMethod(),$matches,PREG_OFFSET_CAPTURE) && !$this->_checkoutSession->getData('chronopostsrdv_creneaux_info')) {
+            // throw new StateException(__('Please select an appointment date'));
+        // }
+		
     }
 }

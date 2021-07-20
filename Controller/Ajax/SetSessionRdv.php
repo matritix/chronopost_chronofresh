@@ -52,9 +52,12 @@ class setSessionRdv extends \Magento\Framework\App\Action\Action
     {
         /* set session rdv */
         $chronopostsrdv_creneaux_info = $this->getRequest()->getParam('chronopostsrdv_creneaux_info');
-
+		//added fresh
+		$methodCode = $this->getRequest()->getParam('method_code');
+		//end fresh
+		// var_dump($chronopostsrdv_creneaux_info);
         try {
-            $confirm = $this->_helperWebservice->confirmDeliverySlot($chronopostsrdv_creneaux_info);
+            $confirm = $this->_helperWebservice->confirmDeliverySlot($chronopostsrdv_creneaux_info, $methodCode);
             if($confirm->return->code == 0) {
                 $this->_checkoutSession->setData("chronopostsrdv_creneaux_info",json_encode($chronopostsrdv_creneaux_info));
 
@@ -63,11 +66,18 @@ class setSessionRdv extends \Magento\Framework\App\Action\Action
 
                 $heureDebut = $chronopostsrdv_creneaux_info['startHour'].":".str_pad($chronopostsrdv_creneaux_info['startMinutes'],2,'0',STR_PAD_LEFT);
                 $heureFin = $chronopostsrdv_creneaux_info['endHour'].":".str_pad($chronopostsrdv_creneaux_info['endMinutes'],2,'0',STR_PAD_LEFT);
-
+				if($methodCode == 'chronofreshsrdv' || $methodCode == 'chronopostsrdv'){
                 $data = array(
                     "success" => true,
-                    "rdvInfo" => " - ".__("On %1 between %2 and %3",$dateRdv,$heureDebut,$heureFin)
+                    "rdvInfo" => " ".__("On %1 between %2 and %3",$dateRdv,$heureDebut,$heureFin)
                 );
+				}
+				else{
+					$data = array(
+						"success" => true,
+						"rdvInfo" => " ".__("Le %1",$dateRdv)
+					);					
+				}
             } else {
                 $data = array("error" => true,"message" => __($confirm->return->message));
             }

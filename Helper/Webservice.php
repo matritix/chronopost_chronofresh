@@ -22,7 +22,8 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
     const WS_RELAIS_POINTRELAIS = "https://www.chronopost.fr/recherchebt-ws-cxf/PointRelaisServiceWS?wsdl";
     const WS_RELAI_SECOURS = "http://mypudo.pickup-services.com/mypudo/mypudo.asmx?wsdl";
     const WS_RDV_CRENEAUX = "https://www.chronopost.fr/rdv-cxf/services/CreneauServiceWS?wsdl";
-
+	const WS_RDV_WS_CRENAUX = "https://ws.chronopost.fr/rdv-cxf/services/CreneauServiceWS?wsdl";
+	
     protected $methodsAllowed = false;
 
     /**
@@ -58,7 +59,11 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
      * @var OrderRepositoryInterface
      */
     private $_orderRepository;
-
+    /**
+     * @var chronordvcollec
+     */
+    protected $chronordvcollec;
+	
     /**
      * Webservice constructor.
      * @param \Magento\Framework\App\Helper\Context $context
@@ -74,6 +79,9 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
         AuthSession $authSession,
         HelperData $helperData,
         AddressFactory $addressFactory,
+		\Chronopost\Chronorelais\Model\ResourceModel\Chronordv\CollectionFactory $Chronordvcollec,
+		\Chronopost\Chronorelais\Model\ResourceModel\ChronordvStorelocator\CollectionFactory $ChronordvStorelocatorcollec,
+		\Chronopost\Chronorelais\Model\ChronordvStorelocatorFactory  $ChronordvStorelocator,
         DateTime $dateTime
     )
     {
@@ -84,9 +92,12 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
         $this->_helperData = $helperData;
         $this->_addressFactory = $addressFactory;
         $this->_datetime = $dateTime;
+		$this->chronordvcollec = $Chronordvcollec;
+		$this->chronordvStorelocatorcollec = $ChronordvStorelocatorcollec;
+		$this->chronordvstorelocator = $ChronordvStorelocator;
         $this->_orderRepository = $orderRepository;
     }
-
+ 		
     /**
      * @param $wsParams
      * @param string $quickcost_url
@@ -418,7 +429,17 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                     $skybill['as'] = $chronopostsrdv_creneaux_info['asCode'];
                 }
             }
-
+//added fresh
+            if (preg_match('/chronofreshsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
+                $chronopostsrdv_creneaux_info = $_order->getData('chronopostsrdv_creneaux_info');
+                $chronopostsrdv_creneaux_info = json_decode($chronopostsrdv_creneaux_info, true);
+                $skybill['productCode'] = $chronopostsrdv_creneaux_info['productCode'];
+                $skybill['service'] = $chronopostsrdv_creneaux_info['serviceCode'];
+                if ($chronopostsrdv_creneaux_info['dayOfWeek'] == 7 && isset($chronopostsrdv_creneaux_info['asCode'])) {
+                    $skybill['as'] = $chronopostsrdv_creneaux_info['asCode'];
+                }
+            }
+//end fresh		
             $skybills[] = $skybill;
 
         }
@@ -439,7 +460,8 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
         );
 
         /* si chronopostsrdv : ajout parametres supplementaires */
-        if (preg_match('/chronopostsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
+		//added fresh
+        if (preg_match('/chronopostsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE) || preg_match('/chronofreshsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
 
             $chronopostsrdv_creneaux_info = $_order->getData('chronopostsrdv_creneaux_info');
             $chronopostsrdv_creneaux_info = json_decode($chronopostsrdv_creneaux_info, true);
@@ -606,6 +628,9 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                 elseif(preg_match('/chronosameday/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)){
                     $SaturdayShipping = 0;
                 }
+				elseif(preg_match('/chronofreshsameday/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)){
+                    $SaturdayShipping = 0;
+                }
                 elseif (!$_deliver_on_saturday && $is_sending_day) {
                     $SaturdayShipping = 1;
                 }
@@ -651,6 +676,7 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
             && strpos($shippingMethod, 'chronorelaisdom') === false
             && strpos($shippingMethod, 'chronocclassic') === false
             && strpos($shippingMethod, 'chronopostsrdv') === false
+			&& strpos($shippingMethod, 'chronofreshsrdv') === false
         ) {
             Throw new \Exception(__('Returns are only available for France'));
         }
@@ -662,7 +688,11 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
             'chronopostc18',
             'chronopostsrdv',
             'chronocclassic',
-            'chronoexpress'
+            'chronoexpress',
+			'chronofresh',
+			'chronofreshplus',
+			'chronofreshsameday', 
+			'chronofreshsrdv'
         );
 
         if (!in_array($shippingMethod, $shippingMethodAllow)) {
@@ -1020,12 +1050,59 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
         return false;
     }
 
+
+
+
+
     /**
      * @param string $shippingMethodCode
      * @param bool|\Magento\Quote\Model\Quote\Address $address
      * @return array|bool
      */
     public function getPointRelaisByAddress($shippingMethodCode = 'chronorelais', $address = false)
+    {
+		// manuel return 
+	        $collectioncheck = $this->chronordvStorelocatorcollec->create();
+			$collectioncheck->addFieldToFilter('ischronofresh',array("eq"=>1));
+			    $return = array(); 
+			if($collectioncheck->getSize()){ 
+		
+                foreach ($collectioncheck as $pr) {
+                    $newPr = (object)array();
+                    $newPr->adresse1 = $pr->getData('adresse1');
+                    $newPr->adresse2 = $pr->getData('adresse2');
+                    $newPr->adresse3 = $pr->getData('adresse3');
+                    $newPr->latitude = $pr->getData('latitude');
+                    $newPr->longitude = $pr->getData('longitude');
+                    $newPr->codePostal = $pr->getData('codePostal');
+                    $newPr->identifiantChronopostPointA2PAS = $pr->getData('identifiant_chronopost_pointA2PAS');
+                    $newPr->localite = $pr->getData('localite');
+                    $newPr->nomEnseigne = $pr->getData('nom_enseigne');
+                    $time = new \DateTime;
+                    $newPr->dateArriveColis = $time->format(\DateTime::ATOM);   
+					
+					            $newPr->horairesOuvertureLundi = $pr->getData('horaires_ouverture_lundi');
+                                $newPr->horairesOuvertureMardi = $pr->getData('horaires_ouverture_mardi');
+                                $newPr->horairesOuvertureMercredi = $pr->getData('horaires_ouverture_mercredi');
+                                $newPr->horairesOuvertureJeudi = $pr->getData('horaires_ouverture_jeudi');
+                                $newPr->horairesOuvertureVendredi = $pr->getData('horaires_ouverture_vendredi');
+                                $newPr->horairesOuvertureSamedi = $pr->getData('horaires_ouverture_samedi');
+                                $newPr->horairesOuvertureDimanche = $pr->getData('horaires_ouverture_dimanche');
+								 $return[] = $newPr;
+			     }
+			
+			                    
+                }
+
+              return $return;
+		
+	}
+    /**
+     * @param string $shippingMethodCode
+     * @param bool|\Magento\Quote\Model\Quote\Address $address
+     * @return array|bool
+     */
+    public function getPointRelaisByAddressOrign($shippingMethodCode = 'chronorelais', $address = false)
     {
 
         if (!$shippingMethodCode || !$address) {
@@ -1040,7 +1117,7 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
             $accountPassword = $contract['pass'];
         }
 
-        try {
+        // try {
             $carrier = $this->_carrierFactory->get($shippingMethodCode);
 
 
@@ -1060,7 +1137,29 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
             if (isset($countryDomCode[$countryId])) {
                 $countryId = $countryDomCode[$countryId];
             }
+ 
+  
+              // $params = array(
+                // 'accountNumber' => $accountNumber,
+                // 'password' => $accountPassword,
+                // 'zipCode' => $this->getFilledValue($address->getPostcode()),
+                // 'city' => $address->getCity() ? $this->getFilledValue($address->getCity()) : '',
+                // 'countryCode' => $this->getFilledValue($countryId),
+                // 'type' => 'P',
+// 'productCode' => $pointRelaisProductCode,
+                // 'service' => $pointRelaisService,
+                // 'weight' => 2000,
+                // 'shippingDate' => date('d/m/Y'),
+                // 'maxPointChronopost' => $maxPointChronopost,
+                // 'maxDistanceSearch' => $maxDistanceSearch,
+                // 'holidayTolerant' => 1
+            // );
+			//Added
+	
 
+
+
+ 
             $params = array(
                 'accountNumber' => $accountNumber,
                 'password' => $accountPassword,
@@ -1068,21 +1167,23 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                 'city' => $address->getCity() ? $this->getFilledValue($address->getCity()) : '',
                 'countryCode' => $this->getFilledValue($countryId),
                 'type' => 'P',
-                'productCode' => $pointRelaisProductCode,
+                'productCode' => '2R',
                 'service' => $pointRelaisService,
                 'weight' => 2000,
                 'shippingDate' => date('d/m/Y'),
-                'maxPointChronopost' => $maxPointChronopost,
-                'maxDistanceSearch' => $maxDistanceSearch,
+                'maxPointChronopost' => 25,
+                'maxDistanceSearch' => 20,
                 'holidayTolerant' => 1
             );
             if ($addAddressToWs) {
                 $params['address'] = $address->getStreetLine(0) ? $this->getFilledValue($address->getStreetLine(0)) : '';
             }
+			// var_dump($pointRelaisWsMethod);
+			
             $webservbt = $client->$pointRelaisWsMethod($params);
 
             /* format $webservbt pour avoir le meme format que lors de l'appel du WS par code postal */
-            if ($webservbt->return->errorCode == 0) {
+            // if ($webservbt->return->errorCode == 0) {
                 /*
                  * Format entrée
                  *
@@ -1194,15 +1295,51 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                     if (empty($newPr->horairesOuvertureDimanche)) {
                         $newPr->horairesOuvertureDimanche = "00:00-00:00 00:00-00:00";
                     }
+					
+					$pos = strpos($newPr->nomEnseigne, "RELAIS CHRONOPOST TOULOUSE");  
+					// if ($pos !== false) {
+ 
+// $obj = (object) array('1' => 'foo');
 
+			$collectioncheck = $this->chronordvStorelocatorcollec->create();
+			$collectioncheck->addFieldToFilter('adresse1',array("eq"=>$pr->adresse1));
+			if($collectioncheck->getSize()){
+			}
+			else{ 
+ 
+				$chronordv = $this->chronordvstorelocator->create();
+				$chronordv->setData('adresse1',$pr->adresse1);
+				$chronordv->setData('adresse2',$pr->adresse2);
+				$chronordv->setData('adresse3',$pr->adresse3);
+				$chronordv->setData('latitude',$pr->coordGeolocalisationLatitude);
+				$chronordv->setData('longitude',$pr->coordGeolocalisationLongitude);
+				$chronordv->setData('codePostal',$pr->codePostal);
+				$chronordv->setData('identifiant_chronopost_pointA2PAS',$pr->identifiant);
+				$chronordv->setData('localite',$pr->localite);
+				$chronordv->setData('nom_enseigne',$pr->nom);  
+				$chronordv->setData('horaires_ouverture_lundi', $newPr->horairesOuvertureLundi);
+				$chronordv->setData('horaires_ouverture_mardi',$newPr->horairesOuvertureMardi);
+				$chronordv->setData('horaires_ouverture_mercredi',$newPr->horairesOuvertureMercredi);
+				$chronordv->setData('horaires_ouverture_jeudi',$newPr->horairesOuvertureJeudi);
+				$chronordv->setData('horaires_ouverture_vendredi',$newPr->horairesOuvertureVendredi);
+				$chronordv->setData('horaires_ouverture_samedi',$newPr->horairesOuvertureSamedi);
+				$chronordv->setData('horaires_ouverture_dimanche',$newPr->horairesOuvertureDimanche);
+						
+				$chronordv->save();
+			}
+				
+ 
+
+  
                     $return[] = $newPr;
+					// }
                 }
 
                 return $return;
-            }
-        } catch (\Exception $e) {
-            return $this->getPointsRelaisByPudo($address);
-        }
+            // }
+        // } catch (\Exception $e) {
+            // return $this->getPointsRelaisByPudo($address);
+        // }
     }
 
     /**
@@ -1381,17 +1518,18 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
      * @param bool|\Magento\Quote\Model\Quote\Address $_shippingAddress
      * @return bool
      */
-    public function getPlanning($_shippingAddress)
+    public function getPlanning($_shippingAddress,$methodCode = \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE)
     {
+		//work here
         $recipient_address = $_shippingAddress->getStreet();
         if (!isset($recipient_address[1])) {
             $recipient_address[1] = '';
         }
 
-        try {
+        // try {
             $accountNumber = '';
             $accountPassword = '';
-            $contract = $this->_helperData->getCarrierContract(\Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE);
+            $contract = $this->_helperData->getCarrierContract($methodCode);
             if ($contract != null) {
                 $accountNumber = $contract['number'];
                 $accountPassword = $contract['pass'];
@@ -1402,23 +1540,62 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
             $soapHeaders[] = new \SoapHeader($namespace, 'password', $accountPassword);
             $soapHeaders[] = new \SoapHeader($namespace, 'accountNumber', $accountNumber);
 
+
             $client = new \SoapClient(self::WS_RDV_CRENEAUX,
                 array('trace' => 1, 'connection_timeout' => 10));
             $client->__setSoapHeaders($soapHeaders);
 
-            $_srdvConfig = json_decode($this->scopeConfig->getValue("carriers/chronopostsrdv/rdv_config"), true);
+			//added fresh
+            // $_srdvConfig = json_decode($this->scopeConfig->getValue('carriers/'.$methodCode.'/rdv_config'), true);
+
+$_srdvConfig = json_decode($this->scopeConfig->getValue('carriers/chronofreshsrdv/rdv_config'), true);
 
             /* definition date de debut */
-            $dateBegin = date('Y-m-d H:i:s');
-            if (isset($_srdvConfig['dateRemiseColis_nbJour']) && $_srdvConfig['dateRemiseColis_nbJour'] > 0) {
+            $dateBegin = date('Y-m-d H:i:s'); 
+			if(!$dateBegin || !strtotime($dateBegin)){
+				$dateBegin = date('Y-m-d'); 
+			}
+			if($dateBegin < date('Y-m-d')){ 
+				$dateBegin = date('Y-m-d'); 
+			}
+
+if($methodCode == 'chronopost'){
+	$_srdvConfig['dateRemiseColis_nbJour'] = 2;
+	$_srdvConfig['creneaux'][] =    array(
+      "creneaux_debut_jour"=> "2",
+      "creneaux_debut_heures"=>  "0",
+      "creneaux_debut_minutes"=>  "0",
+      "creneaux_fin_jour"=>  "2",
+      "creneaux_fin_heures"=>  "24",
+      "creneaux_fin_minutes"=>  "0"
+    );
+}
+  
+  	// $dateBegin = '2021-05-23'; 	
+ 
+	
+            if (isset($_srdvConfig['dateRemiseColis_nbJour']) && $_srdvConfig['dateRemiseColis_nbJour'] > 0) { 
                 $dateBegin = date('Y-m-d', strtotime('+' . (int)$_srdvConfig['dateRemiseColis_nbJour'] . ' day'));
+				   // $dateBegin = date('Y-m-d', strtotime($dateBegin . '+' . (int)$_srdvConfig['dateRemiseColis_nbJour'] . ' day'));
+				   // var_dump($dateBegin);
             } elseif (isset($_srdvConfig['dateRemiseColis_jour']) && isset($_srdvConfig['dateRemiseColis_heures'])) {
                 $jour_text = date('l', strtotime("Sunday +" . $_srdvConfig['dateRemiseColis_jour'] . " days"));
                 $dateBegin = date('Y-m-d',
                         strtotime('next ' . $jour_text)) . ' ' . $_srdvConfig['dateRemiseColis_heures'] . ':' . $_srdvConfig['dateRemiseColis_minutes'] . ':00';
+			// $jour_text = date('l', strtotime("Sunday +" . $_srdvConfig['dateRemiseColis_jour'] . " days"));
+			// $dateBegin = date('Y-m-d',
+					// strtotime($dateBegin .'next ' . $jour_text)) . ' ' . $_srdvConfig['dateRemiseColis_heures'] . ':' . $_srdvConfig['dateRemiseColis_minutes'] . ':00';
+					 // var_dump("coucou");
+					 // var_dump($dateBegin);
             }
+			// var_dump($dateBegin);
+// $dateBegin = '2021-05-10'; 	
+			$datetobegin= $dateBegin;
             $dateBegin = date('Y-m-d', strtotime($dateBegin)) . 'T' . date('H:i:s', strtotime($dateBegin));
 
+		//added fresh
+						// $params['shipperDeliverySlotClosed'] = array();
+						
             $params = array(
 
                 'callerTool' => 'RDVWS',
@@ -1443,7 +1620,14 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                 'isDeliveryDate' => 0,
                 'slotType' => ''
             );
-
+			//added fresh
+			// if($methodCode == 'chronofreshsrdv' || $methodCode == \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE){
+		 
+				if($methodCode != 'chronorelais'){
+				$params['productType']= 'FRESH';
+				}
+			// }
+			//end fresh
 
             for ($i = 1; $i <= 4; $i++) {
 
@@ -1461,6 +1645,8 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                 }
             }
 
+// var_dump($_srdvConfig['creneaux']);
+// exit();
             /* creneaux à fermer */
             if (isset($_srdvConfig['creneaux'])) {
                 foreach ($_srdvConfig['creneaux'] as $_creneau) {
@@ -1506,37 +1692,79 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                         $dateFinStr = date('Y-m-d',
                                 $this->_datetime->timestamp(strtotime($dateFin))) . 'T' . date('H:i:s',
                                 $this->_datetime->timestamp(strtotime($dateFin)));
-
-                        if (!isset($params['shipperDeliverySlotClosed'])) {
+				
+                        if (!isset($params['shipperDeliverySlotClosed'][0])) {
                             $params['shipperDeliverySlotClosed'] = array();
                         }
                         $params['shipperDeliverySlotClosed'][] = $dateDebutStr . "/" . $dateFinStr;
                     }
                 }
             }
+			
+			// var_dump($_srdvConfig['creneaux']);
+// exit();
+// var_dump($params['shipperDeliverySlotClosed']);
+// exit();
+// $params['shipperDeliverySlotClosed'][] = '2021-05-10T00:00:00.0/2021-05-10T00:00:00.0';
+// $params['shipperDeliverySlotClosed'] = array();
+// $params['shipperDeliverySlotClosed'][] = "2021-04-27T00:00:00/2021-04-28T00:00:00";
 
+// $params['shipperDeliverySlotClosed'][] = "2021-04-29T00:00:00/2021-04-30T00:00:00";
+
+// var_dump($params['shipperDeliverySlotClosed']);
+// exit();
+// array(1) {
+  // [0]=>
+  // string(39) "2021-05-27T00:00:00/2021-05-28T00:00:00"
+// }
+// echo '<pre>';
+// var_dump($params);
+// exit();
+ 
+ //added filter plage
+                         if (!isset($params['shipperDeliverySlotClosed'][0])) {
+                            $params['shipperDeliverySlotClosed'] = array();
+                        }
+						
+								// $params['shipperDeliverySlotClosed'] = array();
+								
+		$collection = $this->chronordvcollec->create();
+		$collection->addFieldToFilter('created_at',array("gteq"=>$datetobegin));
+		$collection->addFieldToFilter('quotaslimit',array("eq"=> 1));
+
+		foreach($collection as $data){
+			$dateDebutStr = date('Y-m-dT00:00:00', strtotime($data->getData('created_at')));
+			$dateFinStr = date("Y-m-dT00:00:00",strtotime($data->getData('created_at') .'+1 days'));
+			$dateDebutStr = str_replace("UTC", "T", $dateDebutStr);
+			$dateFinStr = str_replace("UTC", "T", $dateFinStr);
+			$params['shipperDeliverySlotClosed'][] = $dateDebutStr . "/" . $dateFinStr;
+		}
+ 
+ 
+ // var_dump($params);
             $webservbt = $client->searchDeliverySlot($params);
+
             if ($webservbt->return->code == 0) {
                 return $webservbt;
             }
 
             return false;
-        } catch (\Exception $e) {
-            return false;
-        }
+        // } catch (\Exception $e) {
+            // return false;
+        // }
     }
 
     /**
      * @param string $rdvInfo
      * @return bool
      */
-    public function confirmDeliverySlot($rdvInfo = '')
+    public function confirmDeliverySlot($rdvInfo = '',$carrierModel = \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE)
     {
         try {
 
             $accountNumber = '';
             $accountPassword = '';
-            $contract = $this->_helperData->getCarrierContract(\Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE);
+            $contract = $this->_helperData->getCarrierContract($carrierModel);
             if ($contract != null) {
                 $accountNumber = $contract['number'];
                 $accountPassword = $contract['pass'];
@@ -1553,7 +1781,7 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
 
             $params = array(
                 'callerTool' => 'RDVWS',
-                'productType' => 'RDV',
+                'productType' => 'RDV', //FRESH
 
                 'codeSlot' => $rdvInfo['deliverySlotCode'],
                 'meshCode' => $rdvInfo['meshCode'],
@@ -1562,6 +1790,13 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
                 'position' => $rdvInfo['rank'],
                 'dateSelected' => $rdvInfo['deliveryDate']
             );
+			
+			//added fresh
+			if($carrierModel == 'chronofreshsrdv' || $carrierModel == \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE){
+				$params['productType']= 'FRESH';
+			}
+			//end fresh
+
 
             return $client->confirmDeliverySlotV2($params);
         } catch (\Exception $e) {
@@ -1619,6 +1854,8 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
      */
     public function shippingMethodEnabled($shippingMethod, $contractId = null, $storeId = null, $websiteId = null)
     {
+		//nimp
+	   return true;
         if($contractId != null) {
             $contract = $this->_helperData->getSpecificContract($contractId, $storeId, $websiteId);
         } else {
@@ -1668,9 +1905,11 @@ class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
 
             if(is_array($products)) {
                 foreach ($products as $product) {
+					if(isset($product->productCode)){
                     if($this->_helperData->getChronoProductCode($shippingMethod) == $product->productCode){
                         return true;
                     }
+					}
                 }
             } else {
                 if($this->_helperData->getChronoProductCodeToShipment($shippingMethod) == $products->productCode){

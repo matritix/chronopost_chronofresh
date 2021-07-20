@@ -67,12 +67,12 @@ class ChronopostSameday extends AbstractChronopost
             $deliveryTimeLimit = new \DateTime(date('Y-m-d') . ' ' . $deliveryTimeLimitConf . ':00');
             $currentTime = new \DateTime('NOW');
 
-            if ($this->_datetime->timestamp($currentTime->getTimestamp()) <= $deliveryTimeLimit->getTimestamp()) {
+            // if ($this->_datetime->timestamp($currentTime->getTimestamp()) <= $deliveryTimeLimit->getTimestamp()) {
                 $validate = true;
-            } else {
-                $validate = false;
-                $this->_debugData['error'][] = "heure limite dépassée : heure courante : ".$currentTime->format("H:i").", heure max : ".$deliveryTimeLimit->format("H:i");
-            }
+            // } else {
+                // $validate = false;
+                // $this->_debugData['error'][] = "heure limite dépassée : heure courante : ".$currentTime->format("H:i").", heure max : ".$deliveryTimeLimit->format("H:i");
+            // }
         }
 
         return $validate;

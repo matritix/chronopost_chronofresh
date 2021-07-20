@@ -27,4 +27,5 @@
     <type name="Magento\Checkout\Model\PaymentInformationManagement">
         <plugin name="PaymentInformationManagementPlugin" type="Chronopost\Chronorelais\Plugin\PaymentInformationManagement" sortOrder="10" disabled="false"/>
     </type>
+	
 </config>

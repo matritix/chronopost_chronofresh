@@ -10,7 +10,15 @@ if(!$_creneaux) {
  * 1 = Lundi
  * 7 = dimanche
  **/
+ 
+$methodcode = $block->getMethodCode();
 $_srdvConfig = $block->getRdvConfig();
+if($methodcode == 'chronofreshsrdv'){
+	$_srdvConfig = $block->getRdvFreshConfig();	 
+}
+
+
+
 $_creneauxSort = array();
 $_distinctCreneauxHoraire = array();
 $_semaine = 0;
@@ -53,6 +61,8 @@ $ratePrice = $block->getCarrierBasePrice();
 for($i = 1; $i <= 4; $i++) {
     $_srdvConfig["N".$i."_price"] += $ratePrice;
 }
+$alreadycreneaux = array();
+// $changeslide =0;
 ?>
 <tr id="chronopost_srdv_planning_container" class="chronomap_container">
     <td colspan="4">
@@ -69,7 +79,7 @@ for($i = 1; $i <= 4; $i++) {
             <div id="rdvCarousel">
                 <div id="rdvCarouselContent">
                     <?php for($i = 0; $i < count($_creneauxSortByWeek); $i++): ?>
-                        <?php $_creneauxSort = $_creneauxSortByWeek[$i]; ?>
+                        <?php $_creneauxSort = $_creneauxSortByWeek[$i];$alreadycreneaux = array(); ?>
                         <section class="slide content" id="content<?php echo $i ?>">
                             <table class="date-time" id="thead" width="100%">
                                 <thead>
@@ -89,16 +99,27 @@ for($i = 1; $i <= 4; $i++) {
                                 </thead>
                                 <tbody>
                                 <?php foreach($_distinctCreneauxHoraire as $_horaire): ?>
-                                    <tr>
-                                        <th class="time-cell" scope="row"><?php echo $_horaire; ?></th>
+																			<?php 
+																			
+												if(!in_array($_creneau['deliveryDate'], $alreadycreneaux)): 
+												$alreadycreneaux[] = $_creneau['deliveryDate'];
+												?>	
+                                    <tr> 
+                                        <th class="time-cell" scope="row"><?php echo __('Choisir'); ?></th>
                                         <?php foreach($_creneauxSort as $_day => $_creneaux): ?>
                                             <?php if(isset($_creneaux[$_horaire]) && $_creneaux[$_horaire]["status"] != "F"): ?>
                                                 <?php $_creneaux[$_horaire]['meshCode'] = $_planning->return->meshCode;?>
                                                 <?php $_creneaux[$_horaire]['transactionID'] = $_planning->return->transactionID;?>
-                                                <td>
+									
+                                                <td>			
+
                                                     <label>
                                                         <span>
-                                                            <input type="radio" name="shipping_method_chronopostsrdv" class="shipping_method_chronopostsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+															<?php if($methodcode == 'chronofreshsrdv'): ?>
+                                                            <input type="radio" name="shipping_method_chronofreshsrdv" class="shipping_method_chronofreshsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+															<?php else: ?>
+															<input type="radio" name="shipping_method_chronopostsrdv" class="shipping_method_chronopostsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' > 
+															<?php endif; ?>
                                                             <?php
                                                             if($_srdvConfig['niveauTarifaire_show'] == 1) {
                                                                 echo $block->currency($_srdvConfig[$_creneaux[$_horaire]['tariffLevel']."_price"]);
@@ -106,12 +127,16 @@ for($i = 1; $i <= 4; $i++) {
                                                             ?>
                                                         </span>
                                                     </label>
-                                                </td>
+                                                </td> 
+								
                                             <?php else: ?>
                                                 <td class="unavailable">&nbsp;</td>
                                             <?php endif; ?>
                                         <?php endforeach; ?>
-                                    </tr>
+                                    </tr>  
+													<?php 
+												endif; 
+												?>
                                 <?php endforeach; ?>
                                 </tbody>
                             </table>
@@ -159,8 +184,13 @@ for($i = 1; $i <= 4; $i++) {
                                                 <label>
                                                     <span class="time-cell"><?php echo $_horaire; ?></span>
                                                     <span class="price-cell">
-                                                            <input type="radio" name="shipping_method_chronopostsrdv" class="shipping_method_chronopostsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
-                                                        <?php
+														<?php if($methodcode == 'chronofreshsrdv'): ?>
+                                                            <input type="radio" name="<?php echo 'shipping_method_'.$methodcode; ?>" class="shipping_method_chronofreshsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+														<?php else: ?>
+															<input type="radio" name="shipping_method_chronopostsrdv" class="shipping_method_chronopostsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+														<?php endif; ?>                                                  
+														
+														<?php
                                                         if($_srdvConfig['niveauTarifaire_show'] == 1) {
                                                             echo $block->currency($_srdvConfig[$_creneaux[$_horaire]['tariffLevel']."_price"]);
                                                         }
