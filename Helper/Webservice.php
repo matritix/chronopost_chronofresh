@@ -1,462 +1,282 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
 
 namespace Chronopost\Chronorelais\Helper;
 
-use Chronopost\Chronorelais\Helper\Data as HelperData;
-use Chronopost\Chronorelais\Model\Carrier\Chronorelais;
-use Magento\Backend\Model\Auth\Session as AuthSession;
-use Magento\Framework\App\Helper\Context;
-use Magento\Framework\Locale\Resolver;
-use Magento\Framework\Stdlib\DateTime\DateTime;
-use Magento\Quote\Model\Quote\Address\RateRequest;
 use Magento\Sales\Api\OrderRepositoryInterface;
-use Magento\Sales\Model\Order;
-use Magento\Sales\Model\Order\Address;
-use Magento\Sales\Model\Order\AddressFactory;
 use Magento\Shipping\Model\CarrierFactory;
-use Magento\Sales\Model\Order\Shipment;
-use Magento\Framework\App\Helper\AbstractHelper;
-use Chronopost\Chronorelais\Model\OrderExportStatusFactory;
-use Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv;
-use Magento\Quote\Model\Quote\Address as ModelQuoteAddress;
+use Magento\Framework\Locale\Resolver;
+use \Magento\Backend\Model\Auth\Session as AuthSession;
 
-/**
- * Class Webservice
- *
- * @package Chronopost\Chronorelais\Helper
- * @SuppressWarnings(PHPMD.ExcessiveClassLength)
- * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
- */
-class Webservice extends AbstractHelper
+use Chronopost\Chronorelais\Helper\Data as HelperData;
+
+use Magento\Sales\Model\Order\AddressFactory;
+use \Magento\Framework\Stdlib\DateTime\DateTime;
+
+class Webservice extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    const WS_QUICKCOST = 'https://www.chronopost.fr/quickcost-cxf/QuickcostServiceWS?wsdl';
-    const WS_SHIPPING_SERVICE = 'https://www.chronopost.fr/shipping-cxf/ShippingServiceWS?wsdl';
-    const WS_TRACKING_SERVICE = 'https://www.chronopost.fr/tracking-cxf/TrackingServiceWS?wsdl';
-    const WS_RELAY_SERVICE = 'http://wsshipping.chronopost.fr/soap.point.relais/services/ServiceRechercheBt?wsdl';
-    const WS_RELAY_POINTRELAY = 'https://www.chronopost.fr/recherchebt-ws-cxf/PointRelaisServiceWS?wsdl';
-    const WS_RELAI_SECOURS = 'http://mypudo.pickup-services.com/mypudo/mypudo.asmx?wsdl';
-    const WS_RDV_CRENEAUX = 'https://www.chronopost.fr/rdv-cxf/services/CreneauServiceWS?wsdl';
 
-
-    /**
-     * @var bool
-     */
-    protected $methodsAllowed = [];
+    const WS_QUICKCOST = "https://www.chronopost.fr/quickcost-cxf/QuickcostServiceWS?wsdl";
+    const WS_SHIPPING_SERVICE = "https://www.chronopost.fr/shipping-cxf/ShippingServiceWS?wsdl";
+    const WS_TRACKING_SERVICE = "https://www.chronopost.fr/tracking-cxf/TrackingServiceWS?wsdl";
+    const WS_RELAIS_SERVICE = "http://wsshipping.chronopost.fr/soap.point.relais/services/ServiceRechercheBt?wsdl";
+    const WS_RELAIS_POINTRELAIS = "https://www.chronopost.fr/recherchebt-ws-cxf/PointRelaisServiceWS?wsdl";
+    const WS_RELAI_SECOURS = "http://mypudo.pickup-services.com/mypudo/mypudo.asmx?wsdl";
+    const WS_RDV_CRENEAUX = "https://www.chronopost.fr/rdv-cxf/services/CreneauServiceWS?wsdl";
+	const WS_RDV_WS_CRENAUX = "https://ws.chronopost.fr/rdv-cxf/services/CreneauServiceWS?wsdl";
+	
+    protected $methodsAllowed = false;
 
     /**
      * @var CarrierFactory
      */
-    protected $carrierFactory;
+    protected $_carrierFactory;
 
     /**
      * @var Resolver
      */
-    protected $resolver;
+    protected $_resolver;
 
     /**
      * @var AuthSession
      */
-    protected $authSessionver;
+    protected $_authSession;
 
     /**
      * @var Data
      */
-    protected $helperData;
+    protected $_helperData;
 
     /**
      * @var AddressFactory
      */
-    protected $addressFactory;
+    protected $_addressFactory;
 
     /**
      * @var DateTime
      */
-    protected $datetime;
-
+    protected $_datetime;
     /**
      * @var OrderRepositoryInterface
      */
-    private $orderRepository;
-
+    private $_orderRepository;
     /**
-     * @var OrderExportStatusFactory
+     * @var chronordvcollec
      */
-    private $orderExportStatusFactory;
-
+    protected $chronordvcollec;
+	
     /**
      * Webservice constructor.
-     *
-     * @param Context                  $context
-     * @param CarrierFactory           $carrierFactory
-     * @param Resolver                 $resolver
-     * @param AuthSession              $authSessionver
-     * @param Data                     $helperData
-     * @param AddressFactory           $addressFactory
-     * @param DateTime                 $dateTime
-     * @param OrderRepositoryInterface $orderRepository
-     * @param OrderExportStatusFactory $exportStatusFactory
+     * @param \Magento\Framework\App\Helper\Context $context
+     * @param CarrierFactory $carrierFactory
+     * @param Resolver $resolver
+     * @param AuthSession $authSession
      */
     public function __construct(
-        Context $context,
+        OrderRepositoryInterface $orderRepository,
+        \Magento\Framework\App\Helper\Context $context,
         CarrierFactory $carrierFactory,
         Resolver $resolver,
-        AuthSession $authSessionver,
+        AuthSession $authSession,
         HelperData $helperData,
         AddressFactory $addressFactory,
-        DateTime $dateTime,
-        OrderRepositoryInterface $orderRepository,
-        OrderExportStatusFactory $exportStatusFactory
-    ) {
+		\Chronopost\Chronorelais\Model\ResourceModel\Chronordv\CollectionFactory $Chronordvcollec,
+		\Chronopost\Chronorelais\Model\ResourceModel\ChronordvStorelocator\CollectionFactory $ChronordvStorelocatorcollec,
+		\Chronopost\Chronorelais\Model\ChronordvStorelocatorFactory  $ChronordvStorelocator,
+        DateTime $dateTime
+    )
+    {
         parent::__construct($context);
-        $this->carrierFactory = $carrierFactory;
-        $this->resolver = $resolver;
-        $this->authSessionver = $authSessionver;
-        $this->helperData = $helperData;
-        $this->addressFactory = $addressFactory;
-        $this->datetime = $dateTime;
-        $this->orderRepository = $orderRepository;
-        $this->orderExportStatusFactory = $exportStatusFactory;
+        $this->_carrierFactory = $carrierFactory;
+        $this->_resolver = $resolver;
+        $this->_authSession = $authSession;
+        $this->_helperData = $helperData;
+        $this->_addressFactory = $addressFactory;
+        $this->_datetime = $dateTime;
+		$this->chronordvcollec = $Chronordvcollec;
+		$this->chronordvStorelocatorcollec = $ChronordvStorelocatorcollec;
+		$this->chronordvstorelocator = $ChronordvStorelocator;
+        $this->_orderRepository = $orderRepository;
     }
-
+ 		
     /**
-     * Check login
-     *
-     * @param array $wsParams
-     *
-     * @return mixed
-     */
-    public function checkLogin(array $wsParams)
-    {
-        $quickcostUrl = static::WS_QUICKCOST;
-
-        try {
-            $client = new \SoapClient($quickcostUrl);
-
-            return $client->calculateProducts($wsParams);
-        } catch (\Exception $exception) {
-            return false;
-        }
-    }
-
-    /**
-     * Get quick cost
-     *
-     * @param array       $wsParams
-     * @param string|null $quickcostUrl
-     *
-     * @return mixed
-     */
-    public function getQuickcost(array $wsParams, $quickcostUrl)
-    {
-        if (!$quickcostUrl) {
-            $quickcostUrl = static::WS_QUICKCOST;
-        }
-
-        try {
-            $client = new \SoapClient($quickcostUrl);
-
-            return $client->quickCost($wsParams);
-        } catch (\Exception $exception) {
-            return false;
-        }
-    }
-
-    /**
-     * Return true if the delivery method is part of the contract
-     *
-     * @param string      $code
-     * @param RateRequest $request
-     *
+     * @param $wsParams
+     * @param string $quickcost_url
      * @return bool
      */
-    public function getMethodIsAllowed(string $code, RateRequest $request)
+    public function checkLogin($wsParams, $quickcost_url = '')
+    {
+        if (!$quickcost_url) {
+            $quickcost_url = static::WS_QUICKCOST;
+        }
+        try {
+            $client = new \SoapClient($quickcost_url);
+            $webservbt = $client->calculateProducts($wsParams);
+            return $webservbt;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @param $wsParams
+     * @param string $quickcost_url
+     * @return bool
+     */
+    public function getQuickcost($wsParams, $quickcost_url = '')
+    {
+        if (!$quickcost_url) {
+            $quickcost_url = static::WS_QUICKCOST;
+        }
+        try {
+            $client = new \SoapClient($quickcost_url);
+            $webservbt = $client->quickCost($wsParams);
+            return $webservbt->return;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Return true si la méthode de livraison fait partie du contrat
+     * @param $code
+     * @param \Magento\Quote\Model\Quote\Address\RateRequest $request
+     * @return bool
+     */
+    public function getMethodIsAllowed($code, \Magento\Quote\Model\Quote\Address\RateRequest $request)
     {
         try {
-            $address = $this->addressFactory->create();
+
+            $address = $this->_addressFactory->create();
             $address->setCountryId($request->getDestCountryId());
             $address->setPostcode($request->getDestPostcode());
             $address->setCity($request->getDestCity());
 
             $methodAllowed = $this->getMethods($address, $code);
 
-            if (count($methodAllowed) && in_array($code, $methodAllowed)) {
+            if (!empty($methodAllowed) && in_array($code, $methodAllowed)) {
                 return true;
             }
-
             return false;
-        } catch (\Exception $exception) {
+        } catch (\Exception $e) {
             return false;
         }
     }
 
     /**
-     * Get methods
-     *
-     * @param Address $address
-     * @param string  $carrierCode
-     *
-     * @return array
+     * @param \Magento\Sales\Model\Order\Address $address
+     * @return array|bool
      */
-    public function getMethods(Address $address, string $carrierCode)
+    public function getMethods(\Magento\Sales\Model\Order\Address $address, $carrierCode)
     {
         $accountNumber = '';
         $accountPassword = '';
-        $contract = $this->helperData->getCarrierContract($carrierCode);
-        if ($contract !== null) {
+        $contract = $this->_helperData->getCarrierContract($carrierCode);
+        if ($contract != null) {
             $accountNumber = $contract['number'];
             $accountPassword = $contract['pass'];
         }
-
         try {
-            if (count($this->methodsAllowed) === 0) {
-                $this->methodsAllowed = [];
-                $client = new \SoapClient(static::WS_QUICKCOST, ['trace' => 0, 'connection_timeout' => 10]);
-                $params = [
-                    'accountNumber'  => $accountNumber,
-                    'password'       => $accountPassword,
-                    'depCountryCode' => $this->scopeConfig->getValue('chronorelais/shipperinformation/country'),
-                    'depZipCode'     => $this->scopeConfig->getValue('chronorelais/shipperinformation/zipcode'),
+            if ($this->methodsAllowed === false) {
+                $this->methodsAllowed = array();
+                $client = new \SoapClient(static::WS_QUICKCOST, array('trace' => 0, 'connection_timeout' => 10));
+                $params = array(
+                    'accountNumber' => $accountNumber,
+                    'password' => $accountPassword,
+                    'depCountryCode' => $this->scopeConfig->getValue("chronorelais/shipperinformation/country"),
+                    'depZipCode' => $this->scopeConfig->getValue("chronorelais/shipperinformation/zipcode"),
                     'arrCountryCode' => $this->getFilledValue($address->getCountryId()),
-                    'arrZipCode'     => $this->getFilledValue($address->getPostcode()),
-                    'arrCity'        => $address->getCity() ? $this->getFilledValue($address->getCity()) : '-',
-                    'type'           => 'M',
-                    'weight'         => 1
-                ];
-
+                    'arrZipCode' => $this->getFilledValue($address->getPostcode()),
+                    'arrCity' => $address->getCity() ? $this->getFilledValue($address->getCity()) : '-',
+                    'type' => 'M',
+                    'weight' => 1
+                );
                 $webservbt = $client->calculateProducts($params);
                 if ($webservbt->return->errorCode == 0 && $webservbt->return->productList) {
                     if (is_array($webservbt->return->productList)) {
                         foreach ($webservbt->return->productList as $product) {
                             $this->methodsAllowed[] = $product->productCode;
                         }
-                    } else {
+                    } else { /* cas ou il y a un seul résultat */
                         $product = $webservbt->return->productList;
                         $this->methodsAllowed[] = $product->productCode;
                     }
                 }
             }
-
             return $this->methodsAllowed;
-        } catch (\Exception $exception) {
-            return [];
+        } catch (\Exception $e) {
+            return false;
         }
     }
 
     /**
-     * Get filled value
-     *
-     * @param string|null $value
-     *
+     * @param $value
      * @return string
      */
     protected function getFilledValue($value)
     {
         if ($value) {
-            return $this->removeAccents(trim($value));
+            return $this->removeaccents(trim($value));
+        } else {
+            return '';
         }
-
-        return '';
     }
 
+    /*****************************************************************************************************************
+     ************************************ ETIQUETTES ******************************************************************
+     **************************************************************************************************************/
+
     /**
-     * Remove accents of string
-     *
      * @param $string
-     *
      * @return mixed
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function removeAccents($string)
+    public function removeaccents($string)
     {
         $stringToReturn = str_replace(
-            [
-                'à',
-                'á',
-                'â',
-                'ã',
-                'ä',
-                'ç',
-                'è',
-                'é',
-                'ê',
-                'ë',
-                'ì',
-                'í',
-                'î',
-                'ï',
-                'ñ',
-                'ò',
-                'ó',
-                'ô',
-                'õ',
-                'ö',
-                'ù',
-                'ú',
-                'û',
-                'ü',
-                'ý',
-                'ÿ',
-                'À',
-                'Á',
-                'Â',
-                'Ã',
-                'Ä',
-                'Ç',
-                'È',
-                'É',
-                'Ê',
-                'Ë',
-                'Ì',
-                'Í',
-                'Î',
-                'Ï',
-                'Ñ',
-                'Ò',
-                'Ó',
-                'Ô',
-                'Õ',
-                'Ö',
-                'Ù',
-                'Ú',
-                'Û',
-                'Ü',
-                'Ý',
-                '/',
-                '\xa8'
-            ],
-            [
-                'a',
-                'a',
-                'a',
-                'a',
-                'a',
-                'c',
-                'e',
-                'e',
-                'e',
-                'e',
-                'i',
-                'i',
-                'i',
-                'i',
-                'n',
-                'o',
-                'o',
-                'o',
-                'o',
-                'o',
-                'u',
-                'u',
-                'u',
-                'u',
-                'y',
-                'y',
-                'A',
-                'A',
-                'A',
-                'A',
-                'A',
-                'C',
-                'E',
-                'E',
-                'E',
-                'E',
-                'I',
-                'I',
-                'I',
-                'I',
-                'N',
-                'O',
-                'O',
-                'O',
-                'O',
-                'O',
-                'U',
-                'U',
-                'U',
-                'U',
-                'Y',
-                ' ',
-                'e'
-            ],
-            $string
-        );
-
+            array('à', 'á', 'â', 'ã', 'ä', 'ç', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ù', 'ú', 'û', 'ü', 'ý', 'ÿ', 'À', 'Á', 'Â', 'Ã', 'Ä', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ù', 'Ú', 'Û', 'Ü', 'Ý', '/', '\xa8'), array('a', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y', 'y', 'A', 'A', 'A', 'A', 'A', 'C', 'E', 'E', 'E', 'E', 'I', 'I', 'I', 'I', 'N', 'O', 'O', 'O', 'O', 'O', 'U', 'U', 'U', 'U', 'Y', ' ', 'e'), $string);
         // Remove all remaining other unknown characters
         $stringToReturn = preg_replace('/[^a-zA-Z0-9\-]/', ' ', $stringToReturn);
         $stringToReturn = preg_replace('/^[\-]+/', '', $stringToReturn);
         $stringToReturn = preg_replace('/[\-]+$/', '', $stringToReturn);
         $stringToReturn = preg_replace('/[\-]{2,}/', ' ', $stringToReturn);
-
         return $stringToReturn;
     }
 
     /**
-     * Create label
-     *
-     * @param Shipment    $shipment
-     * @param string      $mode
-     * @param string|null $recipientAddressType
-     * @param array       $dimensions
-     * @param int         $packageNumber
-     * @param null|string $contractId
-     * @param null|float  $customAdValorem
-     *
+     * @param \Magento\Sales\Model\Order\Shipment $shipment
+     * @param string $mode
+     * @param string $recipient_address_type
      * @return bool
-     * @throws \SoapFault
+     * @throws \Exception
      */
-    public function createEtiquette(
-        Shipment $shipment,
-        string $mode = 'shipping',
-        $recipientAddressType = 'returninformation',
-        $dimensions = [],
-        $packageNumber = 1,
-        $contractId = null,
-        $customAdValorem = null
-    ) {
-        if ($mode === 'shipping') {
-            $shippingData = $this->getShipmentParams(
-                (int)$packageNumber,
-                $shipment,
-                $dimensions,
-                $contractId,
-                $customAdValorem
-            );
+    public function createEtiquette($shipment, $mode = 'expedition', $recipient_address_type = 'returninformation', $dimensions = null, $nb_colis = 1, $contractId = null)
+    {
+
+        if ($mode == 'expedition') {
+            $expeditionArray = $this->getExpeditionParams($shipment, $dimensions, $nb_colis, $contractId);
         } else {
-            $shippingData = $this->getReturnParams($shipment, $recipientAddressType);
+            $expeditionArray = $this->getRetourParams($shipment, $recipient_address_type);
         }
 
-        if (count($shippingData)) {
-            $client = new \SoapClient(self::WS_SHIPPING_SERVICE, ['trace' => true]);
-            $expedition = $client->shippingMultiParcelWithReservationV3($shippingData);
+        if ($expeditionArray) {
+            $client = new \SoapClient(self::WS_SHIPPING_SERVICE, array('trace' => true));
+            if($mode == 'expedition') {
+                $expedition = $client->shippingMultiParcelWithReservationV3($expeditionArray);
+            } else {
+                $expedition = $client->shippingV7($expeditionArray);
+            }
 
             if (!$expedition->return->errorCode) {
                 return $expedition;
             } else {
                 switch ($expedition->return->errorCode) {
                     case 33:
-                        $message = __('An error occured during the label creation. ' .
-                            'Please check if this contract can edit labels for this carrier.');
+                        $message = __('An error occured during the label creation. Please check if this contract can edit labels for this carrier.');
                         break;
                     default:
                         $message = __($expedition->return->errorMessage);
                         break;
                 }
-
-                throw new \Exception((string)$message);
+                Throw new \Exception ($message);
             }
         }
 
@@ -464,312 +284,217 @@ class Webservice extends AbstractHelper
     }
 
     /**
-     * Get shipping params
-     *
-     * @param int         $packageNumber
-     * @param Shipment    $shipment
-     * @param array       $dimensions
-     * @param string|null $contractId
-     * @param null|float  $customAdValorem
-     *
+     * @param \Magento\Sales\Model\Order\Shipment $shipment
      * @return array
-     * @throws \Exception
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    protected function getShipmentParams(
-        int $packageNumber,
-        Shipment $shipment,
-        $dimensions = [],
-        $contractId = null,
-        $customAdValorem = null
-    ) {
-        $order = $shipment->getOrder();
-        $shippingAddress = $shipment->getShippingAddress();
-        $billingAddress = $shipment->getBillingAddress();
-
-        $shippingMethod = explode('_', $order->getData('shipping_method'));
-        $shippingMethod = isset($shippingMethod[1]) ? $shippingMethod[1] : $shippingMethod[0];
-
-        $carrier = $this->carrierFactory->get($shippingMethod);
-        if (!$carrier || !$carrier->getIsChronoMethod()) {
-            return [];
+    protected function getExpeditionParams(\Magento\Sales\Model\Order\Shipment $shipment, $dimensions = null, $nb_colis, $contractId = null)
+    {
+        $_order = $shipment->getOrder();
+        $_shippingAddress = $shipment->getShippingAddress();
+        $_billingAddress = $shipment->getBillingAddress();
+        if ($dimensions == null) {
+            $dimensions = array();
         }
 
-        // Header parameters
-        $header = $this->getParamsHeader($order, $contractId);
-        $password = $this->getPasswordContract($order, $contractId);
 
-        // Shipper parameters
-        $shipper = $this->getShipperAddress('shipping');
+        $shippingMethod = $_order->getData('shipping_method');
+        $shippingMethod = explode("_", $shippingMethod);
+        $shippingMethod = $shippingMethod[1];
 
-        // Customer parameters
-        $customer = $this->getCustomerParams('shipping');
+        $carrier = $this->_carrierFactory->get($shippingMethod);
+        if (!$carrier || !$carrier->getIsChronoMethod()) { /* methode NON chronopost */
+            return false;
+        }
 
-        // Recipient parameters
-        $customerEmail = $shippingAddress->getEmail() ?: ($billingAddress->getEmail() ?: $order->getCustomerEmail());
-        $recipient = $this->getRecipientAddress('shipping', $shippingAddress, $customerEmail);
 
-        // Ref parameters
-        $recipientRef = $this->getFilledValue($order->getRelaisId());
+        $esdParams = $header = $shipper = $customer = $recipient = $ref = $skybill = $skybillParams = $password = array();
+
+        //header parameters
+        $header = $this->getParamsHeader($_order, $contractId);
+        $password = $this->getPasswordContract($_order, $contractId);
+
+        //shipper parameters
+        $shipperMobilePhone = $this->checkMobileNumber($this->scopeConfig->getValue("chronorelais/shipperinformation/mobilephone"));
+        $shipper = array(
+            'shipperAdress1' => $this->scopeConfig->getValue("chronorelais/shipperinformation/address1"),
+            'shipperAdress2' => $this->scopeConfig->getValue("chronorelais/shipperinformation/address2"),
+            'shipperCity' => $this->scopeConfig->getValue("chronorelais/shipperinformation/city"),
+            'shipperCivility' => $this->scopeConfig->getValue("chronorelais/shipperinformation/civility"),
+            'shipperContactName' => $this->scopeConfig->getValue("chronorelais/shipperinformation/contactname"),
+            'shipperCountry' => $this->scopeConfig->getValue("chronorelais/shipperinformation/country"),
+            'shipperEmail' => $this->scopeConfig->getValue("chronorelais/shipperinformation/email"),
+            'shipperMobilePhone' => $shipperMobilePhone,
+            'shipperName' => $this->scopeConfig->getValue("chronorelais/shipperinformation/name"),
+            'shipperName2' => $this->scopeConfig->getValue("chronorelais/shipperinformation/name2"),
+            'shipperPhone' => $this->scopeConfig->getValue("chronorelais/shipperinformation/phone"),
+            'shipperPreAlert' => '',
+            'shipperZipCode' => $this->scopeConfig->getValue("chronorelais/shipperinformation/zipcode")
+        );
+
+        //customer parameters
+        $customer = $this->getParamsCustomer();
+
+        //recipient parameters
+        $recipient_address = $_shippingAddress->getStreet();
+        if (!isset($recipient_address[1])) {
+            $recipient_address[1] = '';
+        }
+        $customer_email = ($_shippingAddress->getEmail()) ? $_shippingAddress->getEmail() : ($_billingAddress->getEmail() ? $_billingAddress->getEmail() : $_order->getCustomerEmail());
+        $recipientMobilePhone = $this->checkMobileNumber($_shippingAddress->getTelephone());
+        $recipientName = $this->getFilledValue($_shippingAddress->getCompany()); //RelayPoint Name if chronorelais or Companyname if chronopost and
+        $recipientName2 = $this->getFilledValue($_shippingAddress->getFirstname() . ' ' . $_shippingAddress->getLastname());
+        //remove any alphabets in phone number
+
+        $recipientPhone = trim(preg_replace("/[^0-9\.\-]/", " ", $_shippingAddress->getTelephone()));
+
+        $recipient = array(
+            'recipientAdress1' => substr($this->getFilledValue($recipient_address[0]), 0, 38),
+            'recipientAdress2' => substr($this->getFilledValue($recipient_address[1]), 0, 38),
+            'recipientCity' => $this->getFilledValue($_shippingAddress->getCity()),
+            'recipientContactName' => $recipientName2,
+            'recipientCountry' => $this->getFilledValue($_shippingAddress->getCountryId()),
+            'recipientEmail' => $customer_email,
+            'recipientMobilePhone' => $recipientMobilePhone,
+            'recipientName' => $recipientName,
+            'recipientName2' => $recipientName2,
+            'recipientPhone' => $recipientPhone,
+            'recipientPreAlert' => '',
+            'recipientZipCode' => $this->getFilledValue($_shippingAddress->getPostcode()),
+        );
+
+        //ref parameters
+        $recipientRef = $this->getFilledValue($_order->getRelaisId());
         if (!$recipientRef) {
-            $recipientRef = $order->getCustomerId();
+            $recipientRef = $_order->getCustomerId();
+        }
+        $shipperRef = $_order->getRealOrderId();
+
+        $ref = array(
+            'recipientRef' => $recipientRef,
+            'shipperRef' => $shipperRef
+        );
+
+        //skybill parameters
+        /* Livraison Samedi (Delivery Saturday) field */
+        $SaturdayShipping = $this->getParamSaturdayShipping($_order, $carrier, $shippingMethod);
+
+        $weight = $this->getParamWeight($shipment);
+
+        /* si chronorelaiseurope : service : 337 si poids < 3kg ou 338 si > 3kg */
+        if (preg_match('/chronorelaiseur/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
+            $weight <= 3 ? $SaturdayShipping = '337' : $SaturdayShipping = '338';
         }
 
-        $shipperRef = $order->getRealOrderId();
+        $skybills = array();
 
-        // Skybill parameters
-        $optionSaturday = $this->getParamSaturdayShipping($order, $carrier);
-        $productCode = $carrier->getChronoProductCodeToShipment();
-        $serviceCode = $this->getShipmentServiceCode($shippingMethod, $optionSaturday, $shipment);
-
-        $adValorem = 0;
-        if ($packageNumber === 1) {
-            if ($customAdValorem) {
-                $adValorem = $customAdValorem * 100;
-            } else {
-                $adValorem = $this->helperData->getOrderAdValorem($order) * 100;
-            }
-        }
-
-        $weightCoefficient = $this->helperData->getWeightCoef();
-
-        $skybills = [];
-        foreach (range(1, $packageNumber) as $value) {
-            $skybill = [
-                'codCurrency'     => 'EUR',
-                'codValue'        => '',
-                'content1'        => '',
-                'content2'        => '',
-                'content3'        => '',
-                'content4'        => '',
-                'content5'        => '',
+        foreach (range(1 , $nb_colis) as $value) {
+            $skybill = array(
+                'codCurrency' => 'EUR',
+                'codValue' => '',
+                'content1' => '',
+                'content2' => '',
+                'content3' => '',
+                'content4' => '',
+                'content5' => '',
                 'customsCurrency' => 'EUR',
-                'customsValue'    => '',
-                'evtCode'         => 'DC',
+                'customsValue' => '',
+                'evtCode' => 'DC',
                 'insuredCurrency' => 'EUR',
-                'insuredValue'    => $adValorem,
-                'objectType'      => 'MAR',
-                'productCode'     => $productCode,
-                'service'         => $serviceCode,
-                'shipDate'        => date('c'),
-                'shipHour'        => date('H'),
-                'weightUnit'      => 'KGM',
-                'skybillRank'     => $value
-            ];
+                //on multiplie par 100 la valeur de l'assurance car exprimée en centime
+                'insuredValue' => $nb_colis == 1 ? $this->_helperData->getOrderAdValorem($_order) * 100 : 0,
+                'objectType' => 'MAR',
+                'productCode' => $carrier->getChronoProductCodeToShipment(),
+                'service' => $SaturdayShipping,
+                'shipDate' => date('c'),
+                'shipHour' => date('H'),
+                'weightUnit' => 'KGM',
+                'skybillRank' => $value
+            );
 
-            if ($packageNumber > 1) {
-                $skybill['bulkNumber'] = $packageNumber;
+            if($nb_colis > 1){
+                $skybill['bulkNumber'] = $nb_colis;
             }
 
-            $ite = $value - 1;
-            $skybill['weight'] = isset($dimensions[$ite]['weight']) ? $dimensions[$ite]['weight'] / $weightCoefficient : 2;
-            $skybill['height'] = isset($dimensions[$ite]['height']) ? $dimensions[$ite]['height'] : 1;
-            $skybill['length'] = isset($dimensions[$ite]['length']) ? $dimensions[$ite]['length'] : 1;
-            $skybill['width'] = isset($dimensions[$ite]['width']) ? $dimensions[$ite]['width'] : 1;
+            $skybill['weight'] = isset($dimensions[$value-1]['weight']) ? $dimensions[$value-1]['weight'] : 2;
+            $skybill['height'] = isset($dimensions[$value-1]['height']) ?  $dimensions[$value-1]['height'] : 1;
+            $skybill['length'] = isset($dimensions[$value-1]['length']) ?  $dimensions[$value-1]['length'] : 1;
+            $skybill['width'] = isset($dimensions[$value-1]['width']) ?  $dimensions[$value-1]['width'] : 1;
 
             if (preg_match('/chronopostsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
-                $chronopostsrdvCreneauxInfo = $order->getData('chronopostsrdv_creneaux_info');
-                $chronopostsrdvCreneauxInfo = json_decode($chronopostsrdvCreneauxInfo, true);
-                $skybill['productCode'] = $chronopostsrdvCreneauxInfo['productCode'];
-                $skybill['service'] = $chronopostsrdvCreneauxInfo['serviceCode'];
-                if ($chronopostsrdvCreneauxInfo['dayOfWeek'] == 7 && isset($chronopostsrdvCreneauxInfo['asCode'])) {
-                    $skybill['as'] = $chronopostsrdvCreneauxInfo['asCode'];
+                $chronopostsrdv_creneaux_info = $_order->getData('chronopostsrdv_creneaux_info');
+                $chronopostsrdv_creneaux_info = json_decode($chronopostsrdv_creneaux_info, true);
+                $skybill['productCode'] = $chronopostsrdv_creneaux_info['productCode'];
+                $skybill['service'] = $chronopostsrdv_creneaux_info['serviceCode'];
+                if ($chronopostsrdv_creneaux_info['dayOfWeek'] == 7 && isset($chronopostsrdv_creneaux_info['asCode'])) {
+                    $skybill['as'] = $chronopostsrdv_creneaux_info['asCode'];
                 }
             }
-
-            $skybills[] = $skybill;
-        }
-
-        $mode = $this->scopeConfig->getValue('chronorelais/skybillparam/mode');
-        if ($shippingMethod === 'chronorelaiseur') {
-            $mode = 'PPR';
-        }
-
-        $skybillParams = ['mode' => $mode];
-
-        $shippingData = [
-            'headerValue'        => $header,
-            'shipperValue'       => $shipper,
-            'customerValue'      => $customer,
-            'recipientValue'     => $recipient,
-            'refValue'           => ['recipientRef' => $recipientRef, 'shipperRef' => $shipperRef],
-            'skybillValue'       => $skybills,
-            'skybillParamsValue' => $skybillParams,
-            'password'           => $password,
-            'numberOfParcel'     => $packageNumber
-        ];
-
-        // if chronopostsrdv: add additional parameters
-        if (preg_match('/chronopostsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
-            $chronopostsrdvCreneauxInfo = $order->getData('chronopostsrdv_creneaux_info');
-            $chronopostsrdvCreneauxInfo = json_decode($chronopostsrdvCreneauxInfo, true);
-
-            $dateRdvStart = new \DateTime($chronopostsrdvCreneauxInfo['deliveryDate']);
-            $dateRdvStart->setTime(
-                (int)$chronopostsrdvCreneauxInfo['startHour'],
-                (int)$chronopostsrdvCreneauxInfo['startMinutes']
-            );
-
-            $dateRdvEnd = new \DateTime($chronopostsrdvCreneauxInfo['deliveryDate']);
-            $dateRdvEnd->setTime(
-                (int)$chronopostsrdvCreneauxInfo['endHour'],
-                (int)$chronopostsrdvCreneauxInfo['endMinutes']
-            );
-
-            $scheduledValue = [
-                'appointmentValue' => [
-                    'timeSlotStartDate'   => $dateRdvStart->format('Y-m-d') . 'T' . $dateRdvStart->format('H:i:s'),
-                    'timeSlotEndDate'     => $dateRdvEnd->format('Y-m-d') . 'T' . $dateRdvEnd->format('H:i:s'),
-                    'timeSlotTariffLevel' => $chronopostsrdvCreneauxInfo['tariffLevel']
-                ]
-            ];
-
-            $shippingData['scheduledValue'] = $scheduledValue;
-        }
-
-        return $shippingData;
-    }
-
-    /**
-     * Get params return
-     *
-     * @param Shipment    $shipment
-     * @param string|null $recipientAddressType
-     *
-     * @return array
-     * @throws \Exception
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
-     */
-    protected function getReturnParams(Shipment $shipment, $recipientAddressType)
-    {
-        $order = $shipment->getOrder();
-        $shippingAddress = $shipment->getShippingAddress();
-        $billingAddress = $shipment->getBillingAddress();
-        $shippingMethod = explode('_', $order->getShippingMethod());
-        $shippingMethod = isset($shippingMethod[1]) ? $shippingMethod[1] : $shippingMethod[0];
-
-        $carrier = $this->carrierFactory->get($shippingMethod);
-        if (!$carrier || !$carrier->getIsChronoMethod()) {
-            return [];
-        }
-
-        // Header parameters
-        $header = $this->getParamsHeader($order);
-        $password = $this->getPasswordContract($order);
-
-        // Shipper parameters
-        $customerEmail = $shippingAddress->getEmail() ?: ($billingAddress->getEmail() ?: $order->getCustomerEmail());
-        if (strpos($shippingMethod, 'chronorelais') !== false) {
-            // Replace relay address by customer billing address
-            $address = $billingAddress;
-
-            // Replace customer address by relay address if customer country is not authorized
-            if ($shippingMethod === 'chronorelaiseur' &&
-                !$this->helperData->returnAuthorized($billingAddress->getCountryId(), $shippingMethod)) {
-                $address = $shippingAddress;
+//added fresh
+            if (preg_match('/chronofreshsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
+                $chronopostsrdv_creneaux_info = $_order->getData('chronopostsrdv_creneaux_info');
+                $chronopostsrdv_creneaux_info = json_decode($chronopostsrdv_creneaux_info, true);
+                $skybill['productCode'] = $chronopostsrdv_creneaux_info['productCode'];
+                $skybill['service'] = $chronopostsrdv_creneaux_info['serviceCode'];
+                if ($chronopostsrdv_creneaux_info['dayOfWeek'] == 7 && isset($chronopostsrdv_creneaux_info['asCode'])) {
+                    $skybill['as'] = $chronopostsrdv_creneaux_info['asCode'];
+                }
             }
+//end fresh		
+            $skybills[] = $skybill;
 
-            $shipper = $this->getRecipientAddress('return', $address, $customerEmail);
-        } else {
-            $shipper = $this->getRecipientAddress('return', $shippingAddress, $customerEmail);
         }
+        $skybillParams = array(
+            'mode' => $this->scopeConfig->getValue("chronorelais/skybillparam/mode")
+        );
 
-        // Customer parameters
-        $customer = $this->getCustomerParams('return', $billingAddress, $customerEmail);
-
-        // Get recipient return address
-        $recipient = $this->getShipperAddress('return', $recipientAddressType);
-
-        // Reference parameters
-        $recipientRef = $this->getFilledValue($order->getRelaisId());
-        if (!$recipientRef) {
-            $recipientRef = $order->getCustomerId();
-        }
-
-        $shipperRef = $order->getRealOrderId();
-
-        // Skybill parameters
-        $optionSaturday = $this->getParamSaturdayShipping($order, $carrier);
-        $productCode = $this->getReturnProductCode($shippingAddress, $shippingMethod);
-        //$codeService = $this->helperData->getReturnServiceCode($productCode);
-        $codeService = $optionSaturday === true ? 6 : 0; // Service code automatically generated by the webservice
-
-        $skybill = [
-            'codCurrency'     => 'EUR',
-            'codValue'        => '',
-            'content1'        => '',
-            'content2'        => '',
-            'content3'        => '',
-            'content4'        => '',
-            'content5'        => '',
-            'customsCurrency' => 'EUR',
-            'customsValue'    => '',
-            'evtCode'         => 'DC',
-            'insuredCurrency' => 'EUR',
-            'insuredValue'    => 0, // We put the weight to 0 because the packages are weighed on site
-            'objectType'      => 'MAR',
-            'productCode'     => $productCode,
-            'service'         => $codeService,
-            'shipDate'        => date('c'),
-            'shipHour'        => date('H'),
-            'weight'          => 0,
-            'weightUnit'      => 'KGM',
-            'height'          => 1,
-            'length'          => 1,
-            'width'           => 1
-        ];
-
-        $skybillParams = [
-            'mode'            => 'SLT|XML|XML2D|PDF',
-            'withReservation' => 0,
-            'duplicata'       => 'N',
-            'printAsSender'   => 'Y'
-        ];
-
-        if ($skybill['productCode'] === Data::CHRONOPOST_REVERSE_RELAY_EUROPE) {
-            $skybillParams['mode'] = 'PPR|XML';
-        }
-
-        $shippingData = [
-            'headerValue'        => $header,
-            'shipperValue'       => $shipper,
-            'customerValue'      => $customer,
-            'recipientValue'     => $recipient,
-            'refValue'           => ['recipientRef' => $recipientRef, 'shipperRef' => $shipperRef],
-            'skybillValue'       => $skybill,
+        $expeditionArray = array(
+            'headerValue' => $header,
+            'shipperValue' => $shipper,
+            'customerValue' => $customer,
+            'recipientValue' => $recipient,
+            'refValue' => $ref,
+            'skybillValue' => $skybills,
             'skybillParamsValue' => $skybillParams,
-            'password'           => $password,
-            'numberOfParcel'     => 1,
-            'multiParcel'        => 'N',
-            'version'            => '2.0',
-            'modeRetour'         => 3
-        ];
+            'password' => $password,
+            'numberOfParcel' => $nb_colis
+        );
 
-        if ($skybill['productCode'] === Data::CHRONOPOST_REVERSE_RELAY_EUROPE) {
-            $shippingData['modeRetour'] = 1;
+        /* si chronopostsrdv : ajout parametres supplementaires */
+		//added fresh
+        if (preg_match('/chronopostsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE) || preg_match('/chronofreshsrdv/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
+
+            $chronopostsrdv_creneaux_info = $_order->getData('chronopostsrdv_creneaux_info');
+            $chronopostsrdv_creneaux_info = json_decode($chronopostsrdv_creneaux_info, true);
+
+            $_dateRdvStart = new \DateTime($chronopostsrdv_creneaux_info['deliveryDate']);
+            $_dateRdvStart->setTime($chronopostsrdv_creneaux_info['startHour'], $chronopostsrdv_creneaux_info['startMinutes']);
+
+            $_dateRdvEnd = new \DateTime($chronopostsrdv_creneaux_info['deliveryDate']);
+            $_dateRdvEnd->setTime($chronopostsrdv_creneaux_info['endHour'], $chronopostsrdv_creneaux_info['endMinutes']);
+
+
+            $scheduledValue = array(
+                'appointmentValue' => array(
+                    'timeSlotStartDate' => $_dateRdvStart->format("Y-m-d") . "T" . $_dateRdvStart->format("H:i:s"),
+                    'timeSlotEndDate' => $_dateRdvEnd->format("Y-m-d") . "T" . $_dateRdvEnd->format("H:i:s"),
+                    'timeSlotTariffLevel' => $chronopostsrdv_creneaux_info['tariffLevel']
+                )
+            );
+            $expeditionArray['scheduledValue'] = $scheduledValue;
         }
-
-        return $shippingData;
+        return $expeditionArray;
     }
 
     /**
-     * Get header params
-     *
-     * @param Order $order
-     * @param null  $contractId
-     *
      * @return array
      */
-    protected function getParamsHeader(Order $order, $contractId = null)
+    protected function getParamsHeader($order, $contractId = null)
     {
-        if ($contractId !== null && (int)$contractId >= 0) {
-            $contract = $this->helperData->getSpecificContract($contractId);
-        } else {
-            $contract = $this->getContractData($order);
+
+        $contract = $this->getContractData($order);
+
+        if($contractId != null && (int)$contractId >= 0) {
+            $contract = $this->_helperData->getSpecificContract($contractId);
         }
 
         $params['idEmit'] = 'MAG';
@@ -777,361 +502,378 @@ class Webservice extends AbstractHelper
         $params['subAccount'] = $contract['subAccount'];
 
         return $params;
+
     }
 
-    /**
-     * Get contract data
-     *
-     * @param Order $order
-     *
-     * @return array|mixed|null
-     */
-    public function getContractData(Order $order)
+    public function getContractData($order)
     {
-        $contract = $this->helperData->getContractByOrderId($order->getId());
+
+        $contract = $this->_helperData->getContractByOrderId($order->getId());
 
         if (!$contract) {
-            if ($this->_request->getParam('contract') !== null) {
-                $contract = $this->helperData->getSpecificContract($this->_request->getParam('contract'));
-            } else {
-                $shippingMethod = explode('_', $order->getData('shipping_method'));
-                $shippingMethod = isset($shippingMethod[1]) ? $shippingMethod[1] : $shippingMethod[0];
-                $contract = $this->helperData->getCarrierContract($shippingMethod);
-            }
-        } else {
-            $contractTemp = $contract->getData();
 
-            $contract = [];
+            if (null !== $this->_request->getParam('contract')) {
+
+                $contract = $this->_helperData->getSpecificContract($this->_request->getParam('contract'));
+
+            } else {
+
+                $shippingMethod = $order->getData('shipping_method');
+                $shippingMethodCode = explode("_", $shippingMethod);
+                $shippingMethodCode = isset($shippingMethodCode[1]) ? $shippingMethodCode[1] : $shippingMethodCode[0];
+                $contract = $this->_helperData->getCarrierContract($shippingMethodCode);
+
+            }
+
+        } else {
+
+            $contractTemp = $contract->getData();
+            $contract = array();
             $contract['name'] = $contractTemp['contract_name'];
             $contract['number'] = $contractTemp['contract_account_number'];
             $contract['subAccount'] = $contractTemp['contract_sub_account_number'];
             $contract['pass'] = $contractTemp['contract_account_password'];
+
         }
 
         return $contract;
+
+
     }
 
-    /**
-     * Get password contract
-     *
-     * @param Order $order
-     * @param null  $contractId
-     *
-     * @return mixed
-     */
-    protected function getPasswordContract(Order $order, $contractId = null)
+    protected function getPasswordContract($order, $contractId = null)
     {
+
         $contract = $this->getContractData($order);
 
-        if ($contractId !== null && (int)$contractId >= 0) {
-            $contract = $this->helperData->getSpecificContract($contractId);
+        if($contractId != null && (int)$contractId >= 0) {
+            $contract = $this->_helperData->getSpecificContract($contractId);
         }
 
         return $contract['pass'];
+
     }
 
     /**
-     * Check mobile number
-     *
-     * @param string $value
-     *
+     * @param $value
      * @return string
      */
     protected function checkMobileNumber($value)
     {
-        if ($value) {
-            $reqValue = trim($value);
-
-            if ($reqValue) {
-                $number = substr($reqValue, 0, 2);
-                $fixedArr = ['01', '02', '03', '04', '05', '06', '07'];
-                if (in_array($number, $fixedArr)) {
-                    return $reqValue;
-                }
-            }
-        }
-
-        return '';
-    }
-
-    /**
-     * Get address data
-     *
-     * @param string  $type
-     * @param Address $address
-     * @param string  $customerEmail
-     *
-     * @return array
-     */
-    protected function getRecipientAddress(string $type, Address $address, string $customerEmail)
-    {
-        $streetAddress = $address->getStreet();
-        $streetAddress[1] = (!isset($streetAddress[1])) ? '' : $streetAddress[1];
-        $cellPhone = $this->checkMobileNumber($address->getTelephone());
-        $cName = $this->getFilledValue(sprintf('%s %s', $address->getFirstname(), $address->getLastname()));
-        $lastname = $this->getFilledValue($address->getCompany() ?: $address->getLastname());
-
-        $phone = '';
-        if ($address->getTelephone()) {
-            $phone = trim(preg_replace('/[^0-9\.\-]/', ' ', $address->getTelephone()));
-        }
-
-        if ($type === 'shipping') {
-            $data = [
-                'recipientAdress1'     => substr($this->getFilledValue($streetAddress[0]), 0, 38),
-                'recipientAdress2'     => substr($this->getFilledValue($streetAddress[1]), 0, 38),
-                'recipientCity'        => $this->getFilledValue($address->getCity()),
-                'recipientContactName' => $cName,
-                'recipientCountry'     => $this->getFilledValue($address->getCountryId()),
-                'recipientEmail'       => $customerEmail,
-                'recipientMobilePhone' => $cellPhone,
-                'recipientName'        => $lastname,
-                'recipientName2'       => $cName,
-                'recipientPhone'       => $phone,
-                'recipientPreAlert'    => '',
-                'recipientZipCode'     => $this->getFilledValue($address->getPostcode())
-            ];
-        } else {
-            $data = [
-                'shipperAdress1'     => substr($this->getFilledValue($streetAddress[0]), 0, 38),
-                'shipperAdress2'     => $streetAddress[1] ?
-                    substr($this->getFilledValue($streetAddress[1]), 0, 38) : '',
-                'shipperCity'        => $this->getFilledValue($address->getCity()),
-                'shipperCivility'    => 'M',
-                'shipperContactName' => $cName,
-                'shipperCountry'     => $this->getFilledValue($address->getCountryId()),
-                'shipperEmail'       => $customerEmail,
-                'shipperMobilePhone' => $cellPhone,
-                'shipperName'        => $lastname,
-                'shipperName2'       => $cName,
-                'shipperPhone'       => $phone,
-                'shipperPreAlert'    => '',
-                'shipperZipCode'     => $this->getFilledValue($address->getPostcode())
-            ];
-        }
-
-        return $data;
-    }
-
-    /**
-     * Get customer params
-     *
-     * @param string       $type
-     * @param Address|null $address
-     * @param null         $customerEmail
-     *
-     * @return array
-     */
-    protected function getCustomerParams(string $type, $address = null, $customerEmail = null)
-    {
-        if ($type === 'shipping') {
-            $customerMobilePhone = $this->checkMobileNumber(
-                $this->scopeConfig->getValue('chronorelais/customerinformation/mobilephone')
-            );
-
-            $data = [
-                'customerAdress1'     => $this->scopeConfig->getValue('chronorelais/customerinformation/address1'),
-                'customerAdress2'     => $this->scopeConfig->getValue('chronorelais/customerinformation/address2'),
-                'customerCity'        => $this->scopeConfig->getValue('chronorelais/customerinformation/city'),
-                'customerCivility'    => $this->scopeConfig->getValue('chronorelais/customerinformation/civility'),
-                'customerContactName' => $this->scopeConfig->getValue('chronorelais/customerinformation/contactname'),
-                'customerCountry'     => $this->scopeConfig->getValue('chronorelais/customerinformation/country'),
-                'customerEmail'       => $this->scopeConfig->getValue('chronorelais/customerinformation/email'),
-                'customerMobilePhone' => $customerMobilePhone,
-                'customerName'        => $this->scopeConfig->getValue('chronorelais/customerinformation/name'),
-                'customerName2'       => $this->scopeConfig->getValue('chronorelais/customerinformation/name2'),
-                'customerPhone'       => $this->scopeConfig->getValue('chronorelais/customerinformation/phone'),
-                'customerPreAlert'    => '',
-                'customerZipCode'     => $this->scopeConfig->getValue('chronorelais/customerinformation/zipcode')
-            ];
-        } else {
-            $streetAddress = $address->getStreet();
-            $streetAddress[1] = (!isset($streetAddress[1])) ? '' : $streetAddress[1];
-            $cellPhone = $this->checkMobileNumber($address->getTelephone());
-            $cName = $this->getFilledValue(sprintf('%s %s', $address->getFirstname(), $address->getLastname()));
-            $lastname = $this->getFilledValue($address->getCompany() ?: $address->getLastname());
-
-            $phone = '';
-            if ($address->getTelephone()) {
-                $phone = trim(preg_replace('/[^0-9\.\-]/', ' ', $address->getTelephone()));
-            }
-
-            $data = [
-                'customerAdress1'     => substr($this->getFilledValue($streetAddress[0]), 0, 38),
-                'customerAdress2'     => $streetAddress[1] ?
-                    substr($this->getFilledValue($streetAddress[1]), 0, 38) : '',
-                'customerCity'        => $this->getFilledValue($address->getCity()),
-                'customerCivility'    => 'M',
-                'customerContactName' => $cName,
-                'customerCountry'     => $this->getFilledValue($address->getCountryId()),
-                'customerEmail'       => $customerEmail,
-                'customerMobilePhone' => $cellPhone,
-                'customerName'        => $lastname,
-                'customerName2'       => $cName,
-                'customerPhone'       => $phone,
-                'customerPreAlert'    => '',
-                'customerZipCode'     => $this->getFilledValue($address->getPostcode())
-            ];
-        }
-
-        return $data;
-    }
-
-    /**
-     * Get saturday shipping param
-     *
-     * @param Order $order
-     * @param mixed $carrier
-     * @param bool  $isReturn
-     *
-     * @return bool
-     * @throws \Exception
-     */
-    protected function getParamSaturdayShipping(Order $order, $carrier, bool $isReturn = false)
-    {
-        if ($isReturn === false) {
-            $saturdayOptionIsActive = (bool)$order->getData('force_saturday_option');
-            $customerChoiceEnabled = (bool)$this->scopeConfig->getValue('chronorelais/saturday/display_to_customer');
-            if ($saturdayOptionIsActive === false && $customerChoiceEnabled === false) {
-                $saturdayOptionIsActive = $this->helperData->isSendingDay();
-            }
-
-            $shippingConfigSaturday = (bool)$this->scopeConfig->getValue(
-                'carriers/' . $carrier->getCarrierCode() . '/deliver_on_saturday'
-            );
-
-            // Add generated value
-            $saturdayExportStatus = $this->helperData->getShippingSaturdayStatus($order->getId());
-            if ($saturdayExportStatus === 'Yes') {
-                $optionSaturday = true;
-                $order->setData('force_saturday_option_generated', '1');
-            } elseif ($saturdayExportStatus === 'No') {
-                $optionSaturday = false;
-                $order->setData('force_saturday_option_generated', '0');
+        if ($reqvalue = trim($value)) {
+            $_number = substr($reqvalue, 0, 2);
+            $fixed_array = array('01', '02', '03', '04', '05', '06', '07');
+            if (in_array($_number, $fixed_array)) {
+                return $reqvalue;
             } else {
-                $optionSaturday = true;
-                if ($shippingConfigSaturday === false || $saturdayOptionIsActive === false) {
-                    $optionSaturday = false;
-                }
-
-                $order->setData('force_saturday_option_generated', $optionSaturday ? '1' : '0');
+                return '';
             }
-
-            $order->save();
-        } else {
-            $optionSaturday = (bool)$order->getData('force_saturday_option_generated');
         }
+    }
 
-        return $optionSaturday;
+    protected function getParamsCustomer()
+    {
+        $customerMobilePhone = $this->checkMobileNumber($this->scopeConfig->getValue("chronorelais/customerinformation/mobilephone"));
+        $customer = array(
+            'customerAdress1' => $this->scopeConfig->getValue("chronorelais/customerinformation/address1"),
+            'customerAdress2' => $this->scopeConfig->getValue("chronorelais/customerinformation/address2"),
+            'customerCity' => $this->scopeConfig->getValue("chronorelais/customerinformation/city"),
+            'customerCivility' => $this->scopeConfig->getValue("chronorelais/customerinformation/civility"),
+            'customerContactName' => $this->scopeConfig->getValue("chronorelais/customerinformation/contactname"),
+            'customerCountry' => $this->scopeConfig->getValue("chronorelais/customerinformation/country"),
+            'customerEmail' => $this->scopeConfig->getValue("chronorelais/customerinformation/email"),
+            'customerMobilePhone' => $customerMobilePhone,
+            'customerName' => $this->scopeConfig->getValue("chronorelais/customerinformation/name"),
+            'customerName2' => $this->scopeConfig->getValue("chronorelais/customerinformation/name2"),
+            'customerPhone' => $this->scopeConfig->getValue("chronorelais/customerinformation/phone"),
+            'customerPreAlert' => '',
+            'customerZipCode' => $this->scopeConfig->getValue("chronorelais/customerinformation/zipcode")
+        );
+        return $customer;
     }
 
     /**
-     * Get param weight
-     *
-     * @param Shipment $shipment
-     *
+     * @param $_order
+     * @param $carrier
+     * @param $shippingMethod
+     * @return int
+     */
+    protected function getParamSaturdayShipping($_order, $carrier, $shippingMethod)
+    {
+        $SaturdayShipping = 0; //default value for the saturday shipping
+
+        /* gestion livraison samedi */
+        if ($carrier->canDeliverOnSaturday()) {
+            if (!$_deliver_on_saturday = $this->_helperData->getLivraisonSamediStatus($_order->getId())) {
+                $_deliver_on_saturday = $this->scopeConfig->getValue('carriers/' . $carrier->getCarrierCode() . '/deliver_on_saturday');
+            } else {
+                if ($_deliver_on_saturday == 'Yes') {
+                    $_deliver_on_saturday = 1;
+                } else {
+                    $_deliver_on_saturday = 0;
+                }
+            }
+            $is_sending_day = $this->_helperData->isSendingDay();
+
+            if (preg_match('/chronorelaisdom/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)) {
+                if ($_deliver_on_saturday && $is_sending_day) {
+                    $SaturdayShipping = 369;
+                } else {
+                    $SaturdayShipping = 368;
+                }
+            } else {
+                if ($_deliver_on_saturday && $is_sending_day) {
+                    $SaturdayShipping = 6;
+                }
+                elseif(preg_match('/chronosameday/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)){
+                    $SaturdayShipping = 0;
+                }
+				elseif(preg_match('/chronofreshsameday/', $shippingMethod, $matches, PREG_OFFSET_CAPTURE)){
+                    $SaturdayShipping = 0;
+                }
+                elseif (!$_deliver_on_saturday && $is_sending_day) {
+                    $SaturdayShipping = 1;
+                }
+            }
+        }
+        return $SaturdayShipping;
+    }
+
+    /**
+     * @param $shipment
      * @return float|int
      */
-    protected function getParamWeight(Shipment $shipment)
+    protected function getParamWeight($shipment)
     {
         $weight = 0;
         foreach ($shipment->getItemsCollection() as $item) {
             $weight += $item->getWeight() * $item->getQty();
         }
-
-        if ($this->scopeConfig->getValue('chronorelais/weightunit/unit') === 'g') {
-            $weight = $weight / 1000; /* convert g => kg */
+        if ($this->scopeConfig->getValue("chronorelais/weighunit/unit") == 'g') {
+            $weight = $weight / 1000; /* conversion g => kg */
         }
-
         return $weight;
     }
 
     /**
-     * Get address data
-     *
-     * @param string|null $recipAddressType
-     *
+     * @param \Magento\Sales\Model\Order\Shipment $shipment
+     * @param $recipient_address_type
      * @return array
+     * @throws \Exception
      */
-    protected function getShipperAddress(string $type, $recipAddressType = null)
+    protected function getRetourParams(\Magento\Sales\Model\Order\Shipment $shipment, $recipient_address_type)
     {
-        if ($type === 'shipping') {
-            $cellPhone = $this->checkMobileNumber(
-                $this->scopeConfig->getValue('chronorelais/shipperinformation/mobilephone')
-            );
+        $_order = $shipment->getOrder();
+        $_shippingAddress = $shipment->getShippingAddress();
+        $_billingAddress = $shipment->getBillingAddress();
+        $shippingMethod = explode("_", $_order->getShippingMethod());
+        $shippingMethod = $shippingMethod[1];
+        $carrier = $this->_carrierFactory->get($shippingMethod);
 
-            $data = [
-                'shipperAdress1'     => $this->scopeConfig->getValue('chronorelais/shipperinformation/address1'),
-                'shipperAdress2'     => $this->scopeConfig->getValue('chronorelais/shipperinformation/address2'),
-                'shipperCity'        => $this->scopeConfig->getValue('chronorelais/shipperinformation/city'),
-                'shipperCivility'    => $this->scopeConfig->getValue('chronorelais/shipperinformation/civility'),
-                'shipperContactName' => $this->scopeConfig->getValue('chronorelais/shipperinformation/contactname'),
-                'shipperCountry'     => $this->scopeConfig->getValue('chronorelais/shipperinformation/country'),
-                'shipperEmail'       => $this->scopeConfig->getValue('chronorelais/shipperinformation/email'),
-                'shipperMobilePhone' => $cellPhone,
-                'shipperName'        => $this->scopeConfig->getValue('chronorelais/shipperinformation/name'),
-                'shipperName2'       => $this->scopeConfig->getValue('chronorelais/shipperinformation/name2'),
-                'shipperPhone'       => $this->scopeConfig->getValue('chronorelais/shipperinformation/phone'),
-                'shipperPreAlert'    => '',
-                'shipperZipCode'     => $this->scopeConfig->getValue('chronorelais/shipperinformation/zipcode')
-            ];
-        } else {
-            $cellPhone = $this->checkMobileNumber(
-                $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/mobilephone')
-            );
+        if ($_shippingAddress->getCountryId() != 'FR'
+            && strpos($shippingMethod, 'chronoexpress') === false
+            && strpos($shippingMethod, 'chronorelaiseur') === false
+            && strpos($shippingMethod, 'chronorelaisdom') === false
+            && strpos($shippingMethod, 'chronocclassic') === false
+            && strpos($shippingMethod, 'chronopostsrdv') === false
+			&& strpos($shippingMethod, 'chronofreshsrdv') === false
+        ) {
+            Throw new \Exception(__('Returns are only available for France'));
+        }
+        $shippingMethodAllow = array(
+            'chronorelaiseur',
+            'chronorelais',
+            'chronopost',
+            'chronopostc10',
+            'chronopostc18',
+            'chronopostsrdv',
+            'chronocclassic',
+            'chronoexpress',
+			'chronofresh',
+			'chronofreshplus',
+			'chronofreshsameday', 
+			'chronofreshsrdv'
+        );
 
-            $data = [
-                'recipientAdress1'     => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/address1'),
-                'recipientAdress2'     => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/address2'),
-                'recipientCity'        => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/city'),
-                'recipientCivility'    => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/civility'),
-                'recipientContactName' => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/contactname'),
-                'recipientCountry'     => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/country'),
-                'recipientEmail'       => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/email'),
-                'recipientMobilePhone' => $cellPhone,
-                'recipientName'        => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/name'),
-                'recipientName2'       => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/name2'),
-                'recipientPhone'       => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/phone'),
-                'recipientPreAlert'    => '',
-                'recipientZipCode'     => $this->scopeConfig->getValue('chronorelais/' . $recipAddressType . '/zipcode')
-            ];
+        if (!in_array($shippingMethod, $shippingMethodAllow)) {
+            Throw new \Exception('Returns are not available for this delivery option ' . $shippingMethod);
         }
 
-        return $data;
+        if (in_array($shippingMethod, $shippingMethodAllow)) {
+            $esdParams = $header = $shipper = $customer = $recipient = $ref = $skybill = $skybillParams = $password = array();
+
+            //header parameters
+            $header = $this->getParamsHeader($_order);
+            $password = $this->getPasswordContract($_order);
+
+            $recipient = $this->getRecipientReturnAdress($recipient_address_type);
+
+            //customer parameters
+            $customer = $this->getParamsCustomer();
+
+            //recipient parameters
+            $_recipientAddress = $_shippingAddress;
+            if (strpos($shippingMethod, 'chronorelais') !== false) {
+                // Nicolas, le 27/11/2014 : si Chronorelais, on doit utiliser l'adresse de facturation, non de livraison (qui est celle du relais)
+                $_recipientAddress = $_billingAddress;
+            }
+            $recipient_address = $_recipientAddress->getStreet();
+
+            // Champs forcément basés sur l'adresse de livraison
+            $customer_email = ($_shippingAddress->getEmail()) ? $_shippingAddress->getEmail() : ($_billingAddress->getEmail() ? $_billingAddress->getEmail() : $_order->getCustomerEmail());
+            $recipientMobilePhone = $this->checkMobileNumber($_shippingAddress->getTelephone());
+            $recipientName = $this->getFilledValue($_recipientAddress->getCompany()); //RelayPoint Name if chronorelais or Companyname if chronopost and
+            $recipientName2 = $this->getFilledValue($_shippingAddress->getFirstname() . ' ' . $_shippingAddress->getLastname());
+            //remove any alphabets in phone number
+
+            $recipientPhone = trim(preg_replace("/[^0-9\.\-]/", " ", $_shippingAddress->getTelephone()));
+            if (!isset($recipient_address[1])) {
+                $recipient_address[1] = '';
+            }
+
+            $shipper = array(
+                'shipperAdress1' => substr($this->getFilledValue($recipient_address[0]), 0, 38),
+                'shipperAdress2' => $recipient_address[1] ? substr($this->getFilledValue($recipient_address[1]), 0,
+                    38) : '',
+                'shipperCity' => $this->getFilledValue($_recipientAddress->getCity()),
+                'shipperCivility' => 'M',
+                'shipperContactName' => $recipientName2,
+                'shipperCountry' => $this->getFilledValue($_recipientAddress->getCountryId()),
+                'shipperEmail' => $customer_email,
+                'shipperMobilePhone' => $recipientMobilePhone,
+                'shipperName' => $recipientName,
+                'shipperName2' => $recipientName2,
+                'shipperPhone' => $recipientPhone,
+                'shipperPreAlert' => '',
+                'shipperZipCode' => $this->getFilledValue($_recipientAddress->getPostcode()),
+            );
+
+            //ref parameters
+            $recipientRef = $this->getFilledValue($_order->getRelaisId());
+            if (!$recipientRef) {
+                $recipientRef = $_order->getCustomerId();
+            }
+            $shipperRef = $_order->getRealOrderId();
+
+            $ref = array(
+                'recipientRef' => $recipientRef,
+                'shipperRef' => $shipperRef
+            );
+
+            //skybill parameters
+            /* Livraison Samedi (Delivery Saturday) field */
+            $SaturdayShipping = $this->getParamSaturdayShipping($_order, $carrier, $shippingMethod);
+
+            $weight = $this->getParamWeight($shipment);
+
+            // return product code
+            $productCode = $this->getReturnProductCode($_shippingAddress, $shippingMethod);
+
+            // @todo réactiver ce code quand les WS auront été mis à jour
+            //$codeService = $_helper->getReturnServiceCode($productCode);
+            if ($SaturdayShipping == 6) {
+                $codeService = 1;
+            } else {
+                $codeService = 0;
+            }
+
+            $weight = 0; /* On met le poids à 0 car les colis sont pesé sur place */
+
+            $skybill = array(
+                'codCurrency' => 'EUR',
+                'codValue' => '',
+                'content1' => '',
+                'content2' => '',
+                'content3' => '',
+                'content4' => '',
+                'content5' => '',
+                'customsCurrency' => 'EUR',
+                'customsValue' => '',
+                'evtCode' => 'DC',
+                'insuredCurrency' => 'EUR',
+                'insuredValue' => $this->_helperData->getOrderAdValorem($_order),
+                'objectType' => 'MAR',
+                'productCode' => $productCode,
+                'service' => $codeService,
+                'shipDate' => date('c'),
+                'shipHour' => date('H'),
+                'weight' => $weight,
+                'weightUnit' => 'KGM',
+                'height'          => 1,
+                'length'          => 1,
+                'width'           => 1
+            );
+
+            $mode = $this->scopeConfig->getValue("chronorelais/skybillparam/mode");
+            if ($shippingMethod == 'chronorelaiseur') {
+                $mode = 'PPR';
+            }
+            $skybillParams = array(
+                'mode' => $mode,
+                'withReservation' => 0
+            );
+
+            $expeditionArray = array(
+                'headerValue' => $header,
+                'shipperValue' => $shipper,
+                'customerValue' => $customer,
+                'recipientValue' => $recipient,
+                'refValue' => $ref,
+                'skybillValue' => $skybill,
+                'skybillParamsValue' => $skybillParams,
+                'password' => $password
+            );
+
+            return $expeditionArray;
+        }
+    }
+
+    protected function getRecipientReturnAdress($recipient_address_type)
+    {
+
+        $MobilePhone = $this->checkMobileNumber($this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/mobilephone"));
+        $recipient = array(
+            'recipientAdress1' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/address1"),
+            'recipientAdress2' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/address2"),
+            'recipientCity' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/city"),
+            'recipientCivility' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/civility"),
+            'recipientContactName' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/contactname"),
+            'recipientCountry' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/country"),
+            'recipientEmail' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/email"),
+            'recipientMobilePhone' => $MobilePhone,
+            'recipientName' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/name"),
+            'recipientName2' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/name2"),
+            'recipientPhone' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/phone"),
+            'recipientPreAlert' => '',
+            'recipientZipCode' => $this->scopeConfig->getValue("chronorelais/" . $recipient_address_type . "/zipcode")
+        );
+        return $recipient;
     }
 
     /**
-     * Get product code and service code to reverse (return)
-     *
-     * @param Address     $address
-     * @param string|null $carrierCode
-     *
+     * Calcul codeProduct and codeService for Reverse (return)
+     * @param \Magento\Sales\Model\Order\Address $address
      * @return int|string
      */
-    public function getReturnProductCode(Address $address, $carrierCode = null)
+    public function getReturnProductCode(\Magento\Sales\Model\Order\Address $address, $carrierCode = null)
     {
         $productCodes = $this->getMethods($address, $carrierCode);
-        $productReturnCodes = $this->helperData->getReturnProductCodesAllowed($productCodes);
+        $productReturnCodes = $this->_helperData->getReturnProductCodesAllowed($productCodes);
         sort($productReturnCodes, SORT_STRING);
 
-        foreach ($this->helperData->getMatrixReturnCode() as $code => $combinaisonCodes) {
+        foreach ($this->_helperData->getMatriceReturnCode() as $code => $combinaisonCodes) {
             if (in_array($productReturnCodes, $combinaisonCodes)) {
                 return $code;
             }
         }
-
         return HelperData::CHRONOPOST_REVERSE_DEFAULT;
     }
 
-    /**
-     * Cancel label
-     *
-     * @param string $number
-     * @param null   $contract
-     *
-     * @return false
-     * @throws \SoapFault
-     */
+
+    /***************************************************************************************************************
+     ************************************ RELAIS *******************************************************************
+     **************************************************************************************************************/
+
     public function cancelEtiquette($number = '', $contract = null)
     {
         if ($number) {
@@ -1141,393 +883,463 @@ class Webservice extends AbstractHelper
                 $accountNumber = $contract['contract_account_number'];
                 $accountPassword = $contract['contract_account_password'];
             }
-
-            $client = new \SoapClient(self::WS_TRACKING_SERVICE, ['trace' => 0, 'connection_timeout' => 10]);
-            $params = [
+            $client = new \SoapClient(self::WS_TRACKING_SERVICE, array('trace' => 0, 'connection_timeout' => 10));
+            $params = array(
                 'accountNumber' => $accountNumber,
-                'password'      => $accountPassword,
+                'password' => $accountPassword,
                 'skybillNumber' => $number,
-                'language'      => $this->getLocale()
-            ];
-
+                'language' => $this->getLocale()
+            );
             return $client->cancelSkybill($params);
         }
-
         return false;
     }
 
-    /**
-     * Get locale
-     *
-     * @return string
-     */
     protected function getLocale()
     {
-        if ($this->authSessionver->getUser() && $this->authSessionver->getUser()->getId()) {
-            return $this->authSessionver->getUser()->getInterfaceLocale();
+        if ($this->_authSession->getUser() && $this->_authSession->getUser()->getId()) {
+            return $this->_authSession->getUser()->getInterfaceLocale();
         }
-
-        return $this->resolver->getLocale();
+        return $this->_resolver->getLocale();
     }
 
     /**
-     * Get relay by postcode
-     *
-     * @param string $postcode
-     *
+     * @param $cp
      * @return bool|mixed
      */
-    public function getPointsRelaisByCp(string $postcode)
+    public function getPointsRelaisByCp($cp)
     {
         try {
-            $client = new \SoapClient(self::WS_RELAY_SERVICE, ['trace' => 0, 'connection_timeout' => 10]);
-
-            return $client->__call('rechercheBtParCodeproduitEtCodepostalEtDate', [0, $postcode, 0]);
-        } catch (\Exception $exception) {
-            return $this->getPointsRelaisByPudo(null, $postcode);
+            $client = new \SoapClient(self::WS_RELAIS_SERVICE, array('trace' => 0, 'connection_timeout' => 10));
+            return $client->__call("rechercheBtParCodeproduitEtCodepostalEtDate", array(0, $cp, 0));
+        } catch (\Exception $e) {
+            return $this->getPointsRelaisByPudo(false, $cp);
         }
     }
 
     /**
-     * WS emergency relay
-     *
-     * @param null|array $address
-     * @param bool       $postcode
-     *
-     * @return array|false
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
+     * WS relais de secours
+     * @param bool|\Magento\Quote\Model\Quote\Address $address
+     * @param bool|string $cp
+     * @return array|bool
      */
-    public function getPointsRelaisByPudo($address = null, $postcode = false)
+    public function getPointsRelaisByPudo($address = false, $cp = false)
     {
-        $params = [
-            'carrier'             => 'CHR',
-            'key'                 => '75f6fe195dc88ceecbc0f8a2f70a8f3a',
-            'address'             => $address ? $this->getFilledValue($address->getStreetLine(1)) : '',
-            'zipCode'             => $address ? $this->getFilledValue($address->getPostcode()) : $postcode,
-            'city'                => $address ? $this->getFilledValue($address->getCity()) : 'Lille',
-            'countrycode'         => $address ? $this->getFilledValue($address->getCountryId()) : '',
-            'requestID'           => '1',
-            'date_from'           => date('d/m/Y'),
-            'max_pudo_number'     => 5,
+        $params = array(
+            'carrier' => 'CHR',
+            'key' => '75f6fe195dc88ceecbc0f8a2f70a8f3a',
+            'address' => $address ? $this->getFilledValue($address->getStreetLine(1)) : '',
+            'zipCode' => $address ? $this->getFilledValue($address->getPostcode()) : $cp,
+            'city' => $address ? $this->getFilledValue($address->getCity()) : 'Lille',
+            'countrycode' => $address ? $this->getFilledValue($address->getCountryId()) : '',
+            'requestID' => '1',
+            'date_from' => date('d/m/Y'),
+            'max_pudo_number' => 5,
             'max_distance_search' => 10,
-            'weight'              => 1,
-            'category'            => '',
-            'holiday_tolerant'    => 1,
-        ];
-
+            'weight' => 1,
+            'category' => '',
+            'holiday_tolerant' => 1,
+        );
         try {
-            $client = new \SoapClient(
-                self::WS_RELAI_SECOURS,
-                ['trace' => 0, 'connection_timeout' => 10]
-            );
-
+            $client = new \SoapClient(self::WS_RELAI_SECOURS,
+                array('trace' => 0, 'connection_timeout' => 10));
             $webservbt = $client->GetPudoList($params);
             $webservbt = json_decode(json_encode((object)simplexml_load_string($webservbt->GetPudoListResult->any)), 1);
             if (!isset($webservbt['ERROR'])) {
-                $return = [];
+                $return = array();
 
-                $relayPoints = $webservbt['PUDO_ITEMS']['PUDO_ITEM'];
-                if ($relayPoints) {
-                    foreach ($relayPoints as $relayPoint) {
-                        if ($relayPoint['@attributes']['active'] == 'true') {
-                            $newPr = (object)[];
-                            $newPr->adresse1 = $relayPoint['ADDRESS1'];
-                            $newPr->adresse2 = is_array($relayPoint['ADDRESS2']) ? implode(
-                                ' ',
-                                $relayPoint['ADDRESS2']
-                            ) : $relayPoint['ADDRESS2'];
-
-                            $newPr->adresse3 = is_array($relayPoint['ADDRESS3']) ? implode(
-                                ' ',
-                                $relayPoint['ADDRESS3']
-                            ) : $relayPoint['ADDRESS3'];
-
-                            $newPr->codePostal = $relayPoint['ZIPCODE'];
-                            $newPr->identifiantChronopostPointA2PAS = $relayPoint['PUDO_ID'];
-                            $newPr->latitude = $relayPoint['coordGeolocalisationLatitude'];
-                            $newPr->longitude = $relayPoint['coordGeolocalisationLongitude'];
-                            $newPr->localite = $relayPoint['CITY'];
-                            $newPr->nomEnseigne = $relayPoint['NAME'];
-
-                            $time = new \DateTime();
+                $listePr = $webservbt['PUDO_ITEMS']['PUDO_ITEM'];
+                if ($listePr) {
+                    foreach ($listePr as $pr) {
+                        if ($pr['@attributes']['active'] == 'true') {
+                            $newPr = (object)array();
+                            $newPr->adresse1 = $pr['ADDRESS1'];
+                            $newPr->adresse2 = is_array($pr['ADDRESS2']) ? implode(' ',
+                                $pr['ADDRESS2']) : $pr['ADDRESS2'];
+                            $newPr->adresse3 = is_array($pr['ADDRESS3']) ? implode(' ',
+                                $pr['ADDRESS3']) : $pr['ADDRESS3'];
+                            $newPr->codePostal = $pr['ZIPCODE'];
+                            $newPr->identifiantChronopostPointA2PAS = $pr['PUDO_ID'];
+                            $newPr->latitude = $pr['coordGeolocalisationLatitude'];
+                            $newPr->longitude = $pr['coordGeolocalisationLongitude'];
+                            $newPr->localite = $pr['CITY'];
+                            $newPr->nomEnseigne = $pr['NAME'];
+                            $time = new \DateTime;
                             $newPr->dateArriveColis = $time->format(\DateTime::ATOM);
+                            $newPr->horairesOuvertureLundi = $newPr->horairesOuvertureMardi = $newPr->horairesOuvertureMercredi = $newPr->horairesOuvertureJeudi = $newPr->horairesOuvertureVendredi = $newPr->horairesOuvertureSamedi = $newPr->horairesOuvertureDimanche = '';
 
-                            $newPr->horairesOuvertureLundi = '';
-                            $newPr->horairesOuvertureMardi = '';
-                            $newPr->horairesOuvertureMercredi = '';
-                            $newPr->horairesOuvertureJeudi = '';
-                            $newPr->horairesOuvertureVendredi = '';
-                            $newPr->horairesOuvertureSamedi = '';
-                            $newPr->horairesOuvertureDimanche = '';
-
-                            if (isset($relayPoint['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'])) {
-                                $openingHours = $relayPoint['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'];
-                                foreach ($openingHours as $openingHour) {
-                                    switch ($openingHour['DAY_ID']) {
-                                        case '1':
+                            if (isset($pr['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'])) {
+                                $listeHoraires = $pr['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'];
+                                foreach ($listeHoraires as $horaire) {
+                                    switch ($horaire['DAY_ID']) {
+                                        case '1' :
                                             if (!empty($newPr->horairesOuvertureLundi)) {
                                                 $newPr->horairesOuvertureLundi .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureLundi .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureLundi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
-                                        case '2':
+                                        case '2' :
                                             if (!empty($newPr->horairesOuvertureMardi)) {
                                                 $newPr->horairesOuvertureMardi .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureMardi .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureMardi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
-                                        case '3':
+                                        case '3' :
                                             if (!empty($newPr->horairesOuvertureMercredi)) {
                                                 $newPr->horairesOuvertureMercredi .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureMercredi .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureMercredi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
-                                        case '4':
+                                        case '4' :
                                             if (!empty($newPr->horairesOuvertureJeudi)) {
                                                 $newPr->horairesOuvertureJeudi .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureJeudi .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureJeudi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
-                                        case '5':
+                                        case '5' :
                                             if (!empty($newPr->horairesOuvertureVendredi)) {
                                                 $newPr->horairesOuvertureVendredi .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureVendredi .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureVendredi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
-                                        case '6':
+                                        case '6' :
                                             if (!empty($newPr->horairesOuvertureSamedi)) {
                                                 $newPr->horairesOuvertureSamedi .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureSamedi .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureSamedi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
-                                        case '7':
+                                        case '7' :
                                             if (!empty($newPr->horairesOuvertureDimanche)) {
                                                 $newPr->horairesOuvertureDimanche .= ' ';
                                             }
-
-                                            $newPr->horairesOuvertureDimanche .=
-                                                sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                            $newPr->horairesOuvertureDimanche .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                             break;
                                     }
                                 }
                             }
-
                             if (empty($newPr->horairesOuvertureLundi)) {
-                                $newPr->horairesOuvertureLundi = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureLundi = "00:00-00:00 00:00-00:00";
                             }
-
                             if (empty($newPr->horairesOuvertureMardi)) {
-                                $newPr->horairesOuvertureMardi = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureMardi = "00:00-00:00 00:00-00:00";
                             }
-
                             if (empty($newPr->horairesOuvertureMercredi)) {
-                                $newPr->horairesOuvertureMercredi = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureMercredi = "00:00-00:00 00:00-00:00";
                             }
-
                             if (empty($newPr->horairesOuvertureJeudi)) {
-                                $newPr->horairesOuvertureJeudi = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureJeudi = "00:00-00:00 00:00-00:00";
                             }
-
                             if (empty($newPr->horairesOuvertureVendredi)) {
-                                $newPr->horairesOuvertureVendredi = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureVendredi = "00:00-00:00 00:00-00:00";
                             }
-
                             if (empty($newPr->horairesOuvertureSamedi)) {
-                                $newPr->horairesOuvertureSamedi = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureSamedi = "00:00-00:00 00:00-00:00";
                             }
-
                             if (empty($newPr->horairesOuvertureDimanche)) {
-                                $newPr->horairesOuvertureDimanche = '00:00-00:00 00:00-00:00';
+                                $newPr->horairesOuvertureDimanche = "00:00-00:00 00:00-00:00";
                             }
                             $return[] = $newPr;
                         }
                     }
-
                     return $return;
                 }
             }
-        } catch (\Exception $exception) {
+        } catch (\Exception $e) {
             return false;
         }
-
         return false;
     }
 
+
+
+
+
     /**
-     * Get relay by address
-     *
      * @param string $shippingMethodCode
-     * @param false  $address
-     *
+     * @param bool|\Magento\Quote\Model\Quote\Address $address
      * @return array|bool
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
      */
     public function getPointRelaisByAddress($shippingMethodCode = 'chronorelais', $address = false)
     {
+		// manuel return 
+	        $collectioncheck = $this->chronordvStorelocatorcollec->create();
+			$collectioncheck->addFieldToFilter('ischronofresh',array("eq"=>1));
+			    $return = array(); 
+			if($collectioncheck->getSize()){ 
+		
+                foreach ($collectioncheck as $pr) {
+                    $newPr = (object)array();
+                    $newPr->adresse1 = $pr->getData('adresse1');
+                    $newPr->adresse2 = $pr->getData('adresse2');
+                    $newPr->adresse3 = $pr->getData('adresse3');
+                    $newPr->latitude = $pr->getData('latitude');
+                    $newPr->longitude = $pr->getData('longitude');
+                    $newPr->codePostal = $pr->getData('codePostal');
+                    $newPr->identifiantChronopostPointA2PAS = $pr->getData('identifiant_chronopost_pointA2PAS');
+                    $newPr->localite = $pr->getData('localite');
+                    $newPr->nomEnseigne = $pr->getData('nom_enseigne');
+                    $time = new \DateTime;
+                    $newPr->dateArriveColis = $time->format(\DateTime::ATOM);   
+					
+					            $newPr->horairesOuvertureLundi = $pr->getData('horaires_ouverture_lundi');
+                                $newPr->horairesOuvertureMardi = $pr->getData('horaires_ouverture_mardi');
+                                $newPr->horairesOuvertureMercredi = $pr->getData('horaires_ouverture_mercredi');
+                                $newPr->horairesOuvertureJeudi = $pr->getData('horaires_ouverture_jeudi');
+                                $newPr->horairesOuvertureVendredi = $pr->getData('horaires_ouverture_vendredi');
+                                $newPr->horairesOuvertureSamedi = $pr->getData('horaires_ouverture_samedi');
+                                $newPr->horairesOuvertureDimanche = $pr->getData('horaires_ouverture_dimanche');
+								 $return[] = $newPr;
+			     }
+			
+			                    
+                }
+
+              return $return;
+		
+	}
+    /**
+     * @param string $shippingMethodCode
+     * @param bool|\Magento\Quote\Model\Quote\Address $address
+     * @return array|bool
+     */
+    public function getPointRelaisByAddressOrign($shippingMethodCode = 'chronorelais', $address = false)
+    {
+
         if (!$shippingMethodCode || !$address) {
             return false;
         }
 
         $accountNumber = '';
         $accountPassword = '';
-        $contract = $this->helperData->getCarrierContract($shippingMethodCode);
+        $contract = $this->_helperData->getCarrierContract($shippingMethodCode);
         if ($contract != null) {
             $accountNumber = $contract['number'];
             $accountPassword = $contract['pass'];
         }
 
-        try {
-            $carrier = $this->carrierFactory->get($shippingMethodCode);
+        // try {
+            $carrier = $this->_carrierFactory->get($shippingMethodCode);
 
-            $pointRelaisWsMethod = $carrier->getConfigData('point_relai_ws_method');
+
+            $pointRelaisWsMethod = $carrier->getConfigData("point_relai_ws_method");
             $pointRelaisProductCode = $carrier->getChronoProductCode();
             $pointRelaisService = 'T';
-            $addAddressToWs = $carrier->getConfigData('add_address_to_ws');
-            $maxPointChronopost = $carrier->getConfigData('max_point_chronopost');
-            $maxDistanceSearch = $carrier->getConfigData('max_distance_search');
-            $displayType = $this->scopeConfig->getValue('chronorelais/dropoff/mode');
+            $addAddressToWs = $carrier->getConfigData("add_address_to_ws");
+            $maxPointChronopost = $carrier->getConfigData("max_point_chronopost");
+            $maxDistanceSearch = $carrier->getConfigData("max_distance_search");
 
-            $client = new \SoapClient(self::WS_RELAY_POINTRELAY, ['trace' => 0, 'connection_timeout' => 10]);
+            $client = new \SoapClient(self::WS_RELAIS_POINTRELAIS, array('trace' => 0, 'connection_timeout' => 10));
 
-            // if dom => we do not put the ISO code but a specific code, otherwise the dom relay does not work
+            /* si dom => on ne met pas le code ISO mais un code spécifique, sinon le relai dom ne fonctionne pas */
             $countryDomCode = $this->getCountryDomCode();
             $countryId = $address->getCountryId();
+
             if (isset($countryDomCode[$countryId])) {
                 $countryId = $countryDomCode[$countryId];
             }
+ 
+  
+              // $params = array(
+                // 'accountNumber' => $accountNumber,
+                // 'password' => $accountPassword,
+                // 'zipCode' => $this->getFilledValue($address->getPostcode()),
+                // 'city' => $address->getCity() ? $this->getFilledValue($address->getCity()) : '',
+                // 'countryCode' => $this->getFilledValue($countryId),
+                // 'type' => 'P',
+// 'productCode' => $pointRelaisProductCode,
+                // 'service' => $pointRelaisService,
+                // 'weight' => 2000,
+                // 'shippingDate' => date('d/m/Y'),
+                // 'maxPointChronopost' => $maxPointChronopost,
+                // 'maxDistanceSearch' => $maxDistanceSearch,
+                // 'holidayTolerant' => 1
+            // );
+			//Added
+	
 
-            $params = [
-                'accountNumber'      => $accountNumber,
-                'password'           => $accountPassword,
-                'zipCode'            => $this->getFilledValue($address->getPostcode()),
-                'city'               => $address->getCity() ? $this->getFilledValue($address->getCity()) : '',
-                'countryCode'        => $this->getFilledValue($countryId),
-                'type'               => $displayType ? $displayType : 'P',
-                'productCode'        => $pointRelaisProductCode,
-                'service'            => $pointRelaisService,
-                'weight'             => 2000,
-                'shippingDate'       => date('d/m/Y'),
-                'maxPointChronopost' => $maxPointChronopost,
-                'maxDistanceSearch'  => $maxDistanceSearch,
-                'holidayTolerant'    => 1
-            ];
 
+
+ 
+            $params = array(
+                'accountNumber' => $accountNumber,
+                'password' => $accountPassword,
+                'zipCode' => $this->getFilledValue($address->getPostcode()),
+                'city' => $address->getCity() ? $this->getFilledValue($address->getCity()) : '',
+                'countryCode' => $this->getFilledValue($countryId),
+                'type' => 'P',
+                'productCode' => '2R',
+                'service' => $pointRelaisService,
+                'weight' => 2000,
+                'shippingDate' => date('d/m/Y'),
+                'maxPointChronopost' => 25,
+                'maxDistanceSearch' => 20,
+                'holidayTolerant' => 1
+            );
             if ($addAddressToWs) {
-                $params['address'] = $address->getStreetLine(0) ?
-                    $this->getFilledValue($address->getStreetLine(0)) : '';
+                $params['address'] = $address->getStreetLine(0) ? $this->getFilledValue($address->getStreetLine(0)) : '';
             }
-
-            // Format $webservbt to have the same format as when calling the WS by postal code
+			// var_dump($pointRelaisWsMethod);
+			
             $webservbt = $client->$pointRelaisWsMethod($params);
-            if ($webservbt->return->errorCode == 0) {
-                $relayPoints = $webservbt->return->listePointRelais;
-                if (!is_array($relayPoints)) {
-                    $relayPoints = [$relayPoints];
+
+            /* format $webservbt pour avoir le meme format que lors de l'appel du WS par code postal */
+            // if ($webservbt->return->errorCode == 0) {
+                /*
+                 * Format entrée
+                 *
+                 * accesPersonneMobiliteReduite
+                    actif
+                    adresse1
+                    adresse2
+                    adresse3
+                    codePays
+                    codePostal
+                    coordGeolocalisationLatitude
+                    coordGeolocalisationLongitude
+                    distanceEnMetre
+                    identifiant
+                    indiceDeLocalisation
+                    listeHoraireOuverture
+                    localite
+                    nom
+                    poidsMaxi
+                    typeDePoint
+                    urlGoogleMaps
+                 *
+                 * Format sortie
+                 * adresse1
+                    adresse2
+                    adresse3
+                    codePostal
+                    dateArriveColis
+                    horairesOuvertureDimanche ("10:00-12:30 14:30-19:00")
+                    horairesOuvertureJeudi
+                    horairesOuvertureLundi
+                    horairesOuvertureMardi
+                    horairesOuvertureMercredi
+                    horairesOuvertureSamedi
+                    horairesOuvertureVendredi
+                    identifiantChronopostPointA2PAS
+                    localite
+                    nomEnseigne
+                 *
+                 *
+                 *
+                 * 2013-02-19T10:42:40.196Z
+                 *
+                 */
+                $listePr = $webservbt->return->listePointRelais;
+                if (count($webservbt->return->listePointRelais) == 1) {
+                    $listePr = array($listePr);
                 }
-
-                $return = [];
-                foreach ($relayPoints as $relayPoint) {
-                    $newPr = (object)[];
-                    $newPr->adresse1 = $relayPoint->adresse1;
-                    $newPr->adresse2 = $relayPoint->adresse2;
-                    $newPr->adresse3 = $relayPoint->adresse3;
-                    $newPr->latitude = $relayPoint->coordGeolocalisationLatitude;
-                    $newPr->longitude = $relayPoint->coordGeolocalisationLongitude;
-                    $newPr->codePostal = $relayPoint->codePostal;
-                    $newPr->identifiantChronopostPointA2PAS = $relayPoint->identifiant;
-                    $newPr->localite = $relayPoint->localite;
-                    $newPr->nomEnseigne = $relayPoint->nom;
-
-                    $time = new \DateTime();
+                $return = array();
+                foreach ($listePr as $pr) {
+                    $newPr = (object)array();
+                    $newPr->adresse1 = $pr->adresse1;
+                    $newPr->adresse2 = $pr->adresse2;
+                    $newPr->adresse3 = $pr->adresse3;
+                    $newPr->latitude = $pr->coordGeolocalisationLatitude;
+                    $newPr->longitude = $pr->coordGeolocalisationLongitude;
+                    $newPr->codePostal = $pr->codePostal;
+                    $newPr->identifiantChronopostPointA2PAS = $pr->identifiant;
+                    $newPr->localite = $pr->localite;
+                    $newPr->nomEnseigne = $pr->nom;
+                    $time = new \DateTime;
                     $newPr->dateArriveColis = $time->format(\DateTime::ATOM);
-
-                    $newPr->horairesOuvertureLundi = '';
-                    $newPr->horairesOuvertureMardi = '';
-                    $newPr->horairesOuvertureMercredi = '';
-                    $newPr->horairesOuvertureJeudi = '';
-                    $newPr->horairesOuvertureVendredi = '';
-                    $newPr->horairesOuvertureSamedi = '';
-                    $newPr->horairesOuvertureDimanche = '';
-                    foreach ($relayPoint->listeHoraireOuverture as $openingHour) {
-                        switch ($openingHour->jour) {
-                            case '1':
-                                $newPr->horairesOuvertureLundi = $openingHour->horairesAsString;
+                    $newPr->horairesOuvertureLundi = $newPr->horairesOuvertureMardi = $newPr->horairesOuvertureMercredi = $newPr->horairesOuvertureJeudi = $newPr->horairesOuvertureVendredi = $newPr->horairesOuvertureSamedi = $newPr->horairesOuvertureDimanche = '';
+                    foreach ($pr->listeHoraireOuverture as $horaire) {
+                        switch ($horaire->jour) {
+                            case '1' :
+                                $newPr->horairesOuvertureLundi = $horaire->horairesAsString;
                                 break;
-                            case '2':
-                                $newPr->horairesOuvertureMardi = $openingHour->horairesAsString;
+                            case '2' :
+                                $newPr->horairesOuvertureMardi = $horaire->horairesAsString;
                                 break;
-                            case '3':
-                                $newPr->horairesOuvertureMercredi = $openingHour->horairesAsString;
+                            case '3' :
+                                $newPr->horairesOuvertureMercredi = $horaire->horairesAsString;
                                 break;
-                            case '4':
-                                $newPr->horairesOuvertureJeudi = $openingHour->horairesAsString;
+                            case '4' :
+                                $newPr->horairesOuvertureJeudi = $horaire->horairesAsString;
                                 break;
-                            case '5':
-                                $newPr->horairesOuvertureVendredi = $openingHour->horairesAsString;
+                            case '5' :
+                                $newPr->horairesOuvertureVendredi = $horaire->horairesAsString;
                                 break;
-                            case '6':
-                                $newPr->horairesOuvertureSamedi = $openingHour->horairesAsString;
+                            case '6' :
+                                $newPr->horairesOuvertureSamedi = $horaire->horairesAsString;
                                 break;
-                            case '7':
-                                $newPr->horairesOuvertureDimanche = $openingHour->horairesAsString;
+                            case '7' :
+                                $newPr->horairesOuvertureDimanche = $horaire->horairesAsString;
                                 break;
-                            default:
+                            default :
                                 break;
                         }
                     }
-
                     if (empty($newPr->horairesOuvertureLundi)) {
-                        $newPr->horairesOuvertureLundi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureLundi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureMardi)) {
-                        $newPr->horairesOuvertureMardi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureMardi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureMercredi)) {
-                        $newPr->horairesOuvertureMercredi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureMercredi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureJeudi)) {
-                        $newPr->horairesOuvertureJeudi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureJeudi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureVendredi)) {
-                        $newPr->horairesOuvertureVendredi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureVendredi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureSamedi)) {
-                        $newPr->horairesOuvertureSamedi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureSamedi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureDimanche)) {
-                        $newPr->horairesOuvertureDimanche = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureDimanche = "00:00-00:00 00:00-00:00";
                     }
+					
+					$pos = strpos($newPr->nomEnseigne, "RELAIS CHRONOPOST TOULOUSE");  
+					// if ($pos !== false) {
+ 
+// $obj = (object) array('1' => 'foo');
 
+			$collectioncheck = $this->chronordvStorelocatorcollec->create();
+			$collectioncheck->addFieldToFilter('adresse1',array("eq"=>$pr->adresse1));
+			if($collectioncheck->getSize()){
+			}
+			else{ 
+ 
+				$chronordv = $this->chronordvstorelocator->create();
+				$chronordv->setData('adresse1',$pr->adresse1);
+				$chronordv->setData('adresse2',$pr->adresse2);
+				$chronordv->setData('adresse3',$pr->adresse3);
+				$chronordv->setData('latitude',$pr->coordGeolocalisationLatitude);
+				$chronordv->setData('longitude',$pr->coordGeolocalisationLongitude);
+				$chronordv->setData('codePostal',$pr->codePostal);
+				$chronordv->setData('identifiant_chronopost_pointA2PAS',$pr->identifiant);
+				$chronordv->setData('localite',$pr->localite);
+				$chronordv->setData('nom_enseigne',$pr->nom);  
+				$chronordv->setData('horaires_ouverture_lundi', $newPr->horairesOuvertureLundi);
+				$chronordv->setData('horaires_ouverture_mardi',$newPr->horairesOuvertureMardi);
+				$chronordv->setData('horaires_ouverture_mercredi',$newPr->horairesOuvertureMercredi);
+				$chronordv->setData('horaires_ouverture_jeudi',$newPr->horairesOuvertureJeudi);
+				$chronordv->setData('horaires_ouverture_vendredi',$newPr->horairesOuvertureVendredi);
+				$chronordv->setData('horaires_ouverture_samedi',$newPr->horairesOuvertureSamedi);
+				$chronordv->setData('horaires_ouverture_dimanche',$newPr->horairesOuvertureDimanche);
+						
+				$chronordv->save();
+			}
+				
+ 
+
+  
                     $return[] = $newPr;
+					// }
                 }
 
                 return $return;
-            }
-        } catch (\Exception $exception) {
-            return $this->getPointsRelaisByPudo($address);
-        }
+            // }
+        // } catch (\Exception $e) {
+            // return $this->getPointsRelaisByPudo($address);
+        // }
     }
 
     /**
@@ -1535,40 +1347,38 @@ class Webservice extends AbstractHelper
      */
     protected function getCountryDomCode()
     {
-        return [
+        return array(
             'RE' => 'REU',
             'MQ' => 'MTQ',
             'GP' => 'GLP',
             'MX' => 'MYT',
             'GF' => 'GUF'
-        ];
+        );
     }
 
     /**
      * Get info relais
-     *
      * @param $relaisId
-     *
      * @return mixed
      */
     public function getDetailRelaisPoint($relaisId)
     {
         $accountNumber = '';
         $accountPassword = '';
-        $contract = $this->helperData->getCarrierContract(Chronorelais::CARRIER_CODE);
+        $contract = $this->_helperData->getCarrierContract(\Chronopost\Chronorelais\Model\Carrier\Chronorelais::CARRIER_CODE);
         if ($contract != null) {
             $accountNumber = $contract['number'];
             $accountPassword = $contract['pass'];
         }
 
         try {
-            $params = [
+            $params = array(
                 'accountNumber' => $accountNumber,
-                'password'      => $accountPassword,
-                'identifiant'   => $relaisId
-            ];
+                'password' => $accountPassword,
+                'identifiant' => $relaisId
+            );
 
-            $client = new \SoapClient(self::WS_RELAY_POINTRELAY);
+            $client = new \SoapClient(self::WS_RELAIS_POINTRELAIS);
             $webservbt = $client->rechercheDetailPointChronopost($params);
 
             if ($webservbt->return->errorCode == 0) {
@@ -1576,417 +1386,431 @@ class Webservice extends AbstractHelper
             } else {
                 return $this->getDetailRelaisPointByPudo($relaisId);
             }
-        } catch (\Exception $exception) {
+        } catch (\Exception $e) {
             return $this->getDetailRelaisPointByPudo($relaisId);
         }
     }
 
     /**
-     * Get relay informations (emergency WS)
-     *
-     * @param string $relaisId
-     *
+     * get info relai : WS de secours
+     * @param $relaisId
      * @return bool|object
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
     public function getDetailRelaisPointByPudo($relaisId)
     {
-        $params = [
+        $params = array(
             'carrier' => 'CHR',
-            'key'     => '75f6fe195dc88ceecbc0f8a2f70a8f3a',
+            'key' => '75f6fe195dc88ceecbc0f8a2f70a8f3a',
             'pudo_id' => $relaisId,
-        ];
+        );
 
         try {
-            $client = new \SoapClient(self::WS_RELAI_SECOURS, ['trace' => 0, 'connection_timeout' => 10]);
+            $client = new \SoapClient(self::WS_RELAI_SECOURS, array('trace' => 0, 'connection_timeout' => 10));
             $webservbt = $client->GetPudoDetails($params);
-            $xml = (object)simplexml_load_string($webservbt->GetPudoDetailsResult->any);
-            $webservbt = json_decode(json_encode($xml), 1);
-
+            $webservbt = json_decode(json_encode((object)simplexml_load_string($webservbt->GetPudoDetailsResult->any)),
+                1);
             if (!isset($webservbt['ERROR'])) {
-                $relay = $webservbt['PUDO_ITEMS']['PUDO_ITEM'];
-                if ($relay && $relay['@attributes']['active'] == 'true') {
-                    $newPr = (object)[];
-                    $newPr->adresse1 = $relay['ADDRESS1'];
-                    $newPr->adresse2 = is_array($relay['ADDRESS2']) ? implode(
-                        ' ',
-                        $relay['ADDRESS2']
-                    ) : $relay['ADDRESS2'];
-                    $newPr->adresse3 = is_array($relay['ADDRESS3']) ? implode(
-                        ' ',
-                        $relay['ADDRESS3']
-                    ) : $relay['ADDRESS3'];
-                    $newPr->latitude = $relay['coordGeolocalisationLatitude'];
-                    $newPr->longitude = $relay['coordGeolocalisationLongitude'];
-                    $newPr->codePostal = $relay['ZIPCODE'];
-                    $newPr->identifiantChronopostPointA2PAS = $relay['PUDO_ID'];
-                    $newPr->localite = $relay['CITY'];
-                    $newPr->nomEnseigne = $relay['NAME'];
-
-                    $time = new \DateTime();
+                $pr = $webservbt['PUDO_ITEMS']['PUDO_ITEM'];
+                if ($pr && $pr['@attributes']['active'] == 'true') {
+                    $newPr = (object)array();
+                    $newPr->adresse1 = $pr['ADDRESS1'];
+                    $newPr->adresse2 = is_array($pr['ADDRESS2']) ? implode(' ', $pr['ADDRESS2']) : $pr['ADDRESS2'];
+                    $newPr->adresse3 = is_array($pr['ADDRESS3']) ? implode(' ', $pr['ADDRESS3']) : $pr['ADDRESS3'];
+                    $newPr->latitude = $pr['coordGeolocalisationLatitude'];
+                    $newPr->longitude = $pr['coordGeolocalisationLongitude'];
+                    $newPr->codePostal = $pr['ZIPCODE'];
+                    $newPr->identifiantChronopostPointA2PAS = $pr['PUDO_ID'];
+                    $newPr->localite = $pr['CITY'];
+                    $newPr->nomEnseigne = $pr['NAME'];
+                    $time = new \DateTime;
                     $newPr->dateArriveColis = $time->format(\DateTime::ATOM);
+                    $newPr->horairesOuvertureLundi = $newPr->horairesOuvertureMardi = $newPr->horairesOuvertureMercredi = $newPr->horairesOuvertureJeudi = $newPr->horairesOuvertureVendredi = $newPr->horairesOuvertureSamedi = $newPr->horairesOuvertureDimanche = '';
 
-                    $newPr->horairesOuvertureLundi = '';
-                    $newPr->horairesOuvertureMardi = '';
-                    $newPr->horairesOuvertureMercredi = '';
-                    $newPr->horairesOuvertureJeudi = '';
-                    $newPr->horairesOuvertureVendredi = '';
-                    $newPr->horairesOuvertureSamedi = '';
-                    $newPr->horairesOuvertureDimanche = '';
-
-                    if (isset($relay['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'])) {
-                        $openingHours = $relay['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'];
-                        foreach ($openingHours as $openingHour) {
-                            switch ($openingHour['DAY_ID']) {
-                                case '1':
+                    if (isset($pr['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'])) {
+                        $listeHoraires = $pr['OPENING_HOURS_ITEMS']['OPENING_HOURS_ITEM'];
+                        foreach ($listeHoraires as $horaire) {
+                            switch ($horaire['DAY_ID']) {
+                                case '1' :
                                     if (!empty($newPr->horairesOuvertureLundi)) {
                                         $newPr->horairesOuvertureLundi .= ' ';
                                     }
-                                    $newPr->horairesOuvertureLundi .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureLundi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                case '2':
+                                case '2' :
                                     if (!empty($newPr->horairesOuvertureMardi)) {
                                         $newPr->horairesOuvertureMardi .= ' ';
                                     }
-                                    $newPr->horairesOuvertureMardi .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureMardi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                case '3':
+                                case '3' :
                                     if (!empty($newPr->horairesOuvertureMercredi)) {
                                         $newPr->horairesOuvertureMercredi .= ' ';
                                     }
-                                    $newPr->horairesOuvertureMercredi .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureMercredi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                case '4':
+                                case '4' :
                                     if (!empty($newPr->horairesOuvertureJeudi)) {
                                         $newPr->horairesOuvertureJeudi .= ' ';
                                     }
-                                    $newPr->horairesOuvertureJeudi .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureJeudi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                case '5':
+                                case '5' :
                                     if (!empty($newPr->horairesOuvertureVendredi)) {
                                         $newPr->horairesOuvertureVendredi .= ' ';
                                     }
-                                    $newPr->horairesOuvertureVendredi .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureVendredi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                case '6':
+                                case '6' :
                                     if (!empty($newPr->horairesOuvertureSamedi)) {
                                         $newPr->horairesOuvertureSamedi .= ' ';
                                     }
-                                    $newPr->horairesOuvertureSamedi .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureSamedi .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                case '7':
+                                case '7' :
                                     if (!empty($newPr->horairesOuvertureDimanche)) {
                                         $newPr->horairesOuvertureDimanche .= ' ';
                                     }
-                                    $newPr->horairesOuvertureDimanche .=
-                                        sprintf('%s-%s', $openingHour['START_TM'], $openingHour['END_TM']);
+                                    $newPr->horairesOuvertureDimanche .= $horaire['START_TM'] . '-' . $horaire['END_TM'];
                                     break;
-                                default:
+                                default :
                                     break;
                             }
                         }
                     }
-
                     if (empty($newPr->horairesOuvertureLundi)) {
-                        $newPr->horairesOuvertureLundi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureLundi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureMardi)) {
-                        $newPr->horairesOuvertureMardi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureMardi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureMercredi)) {
-                        $newPr->horairesOuvertureMercredi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureMercredi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureJeudi)) {
-                        $newPr->horairesOuvertureJeudi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureJeudi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureVendredi)) {
-                        $newPr->horairesOuvertureVendredi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureVendredi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureSamedi)) {
-                        $newPr->horairesOuvertureSamedi = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureSamedi = "00:00-00:00 00:00-00:00";
                     }
-
                     if (empty($newPr->horairesOuvertureDimanche)) {
-                        $newPr->horairesOuvertureDimanche = '00:00-00:00 00:00-00:00';
+                        $newPr->horairesOuvertureDimanche = "00:00-00:00 00:00-00:00";
                     }
 
                     return $newPr;
                 }
             }
-        } catch (\Exception $exception) {
+        } catch (\Exception $e) {
             return false;
         }
 
         return false;
     }
 
+    /*****************************************************************************************************************
+     ************************************ RDV **********************************************************************
+     **************************************************************************************************************/
+
     /**
-     * Get planning by shipping address
-     *
-     * @param bool|ModelQuoteAddress $shippingAddress
-     *
+     * @param string $_srdvConfig
+     * @param bool|\Magento\Quote\Model\Quote\Address $_shippingAddress
      * @return bool
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
-     * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function getPlanning($shippingAddress)
+    public function getPlanning($_shippingAddress,$methodCode = \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE)
     {
-        $recipientStreetAddress = $shippingAddress->getStreet();
-        if (!isset($recipientStreetAddress[1])) {
-            $recipientStreetAddress[1] = '';
+		//work here
+        $recipient_address = $_shippingAddress->getStreet();
+        if (!isset($recipient_address[1])) {
+            $recipient_address[1] = '';
         }
 
-        try {
+        // try {
             $accountNumber = '';
             $accountPassword = '';
-            $contract = $this->helperData->getCarrierContract(ChronopostSrdv::CARRIER_CODE);
+            $contract = $this->_helperData->getCarrierContract($methodCode);
             if ($contract != null) {
                 $accountNumber = $contract['number'];
                 $accountPassword = $contract['pass'];
             }
 
-            $soapHeaders = [];
+            $soapHeaders = array();
             $namespace = 'http://cxf.soap.ws.creneau.chronopost.fr/';
             $soapHeaders[] = new \SoapHeader($namespace, 'password', $accountPassword);
             $soapHeaders[] = new \SoapHeader($namespace, 'accountNumber', $accountNumber);
 
-            $client = new \SoapClient(
-                self::WS_RDV_CRENEAUX,
-                ['trace' => 1, 'connection_timeout' => 10]
-            );
 
+            $client = new \SoapClient(self::WS_RDV_CRENEAUX,
+                array('trace' => 1, 'connection_timeout' => 10));
             $client->__setSoapHeaders($soapHeaders);
 
-            $srdvConfig = json_decode($this->scopeConfig->getValue("carriers/chronopostsrdv/rdv_config"), true);
+			//added fresh
+            // $_srdvConfig = json_decode($this->scopeConfig->getValue('carriers/'.$methodCode.'/rdv_config'), true);
 
-            // Begin date
-            $dateBegin = date('Y-m-d H:i:s');
-            if (isset($srdvConfig['dateRemiseColis_nbJour']) && $srdvConfig['dateRemiseColis_nbJour'] > 0) {
-                $dateBegin = date('Y-m-d', strtotime('+' . (int)$srdvConfig['dateRemiseColis_nbJour'] . ' day'));
-            } elseif (isset($srdvConfig['dateRemiseColis_jour']) && isset($srdvConfig['dateRemiseColis_heures'])) {
-                $dayTxt = date('l', strtotime("Sunday +" . $srdvConfig['dateRemiseColis_jour'] . " days"));
-                $dateBegin = sprintf(
-                    '%s %s:%s:00',
-                    date('Y-m-d', strtotime('next ' . $dayTxt)),
-                    $srdvConfig['dateRemiseColis_heures'],
-                    $srdvConfig['dateRemiseColis_minutes']
-                );
+$_srdvConfig = json_decode($this->scopeConfig->getValue('carriers/chronofreshsrdv/rdv_config'), true);
+
+            /* definition date de debut */
+            $dateBegin = date('Y-m-d H:i:s'); 
+			if(!$dateBegin || !strtotime($dateBegin)){
+				$dateBegin = date('Y-m-d'); 
+			}
+			if($dateBegin < date('Y-m-d')){ 
+				$dateBegin = date('Y-m-d'); 
+			}
+
+if($methodCode == 'chronopost'){
+	$_srdvConfig['dateRemiseColis_nbJour'] = 2;
+	$_srdvConfig['creneaux'][] =    array(
+      "creneaux_debut_jour"=> "2",
+      "creneaux_debut_heures"=>  "0",
+      "creneaux_debut_minutes"=>  "0",
+      "creneaux_fin_jour"=>  "2",
+      "creneaux_fin_heures"=>  "24",
+      "creneaux_fin_minutes"=>  "0"
+    );
+}
+  
+  	// $dateBegin = '2021-05-23'; 	
+ 
+	
+            if (isset($_srdvConfig['dateRemiseColis_nbJour']) && $_srdvConfig['dateRemiseColis_nbJour'] > 0) { 
+                $dateBegin = date('Y-m-d', strtotime('+' . (int)$_srdvConfig['dateRemiseColis_nbJour'] . ' day'));
+				   // $dateBegin = date('Y-m-d', strtotime($dateBegin . '+' . (int)$_srdvConfig['dateRemiseColis_nbJour'] . ' day'));
+				   // var_dump($dateBegin);
+            } elseif (isset($_srdvConfig['dateRemiseColis_jour']) && isset($_srdvConfig['dateRemiseColis_heures'])) {
+                $jour_text = date('l', strtotime("Sunday +" . $_srdvConfig['dateRemiseColis_jour'] . " days"));
+                $dateBegin = date('Y-m-d',
+                        strtotime('next ' . $jour_text)) . ' ' . $_srdvConfig['dateRemiseColis_heures'] . ':' . $_srdvConfig['dateRemiseColis_minutes'] . ':00';
+			// $jour_text = date('l', strtotime("Sunday +" . $_srdvConfig['dateRemiseColis_jour'] . " days"));
+			// $dateBegin = date('Y-m-d',
+					// strtotime($dateBegin .'next ' . $jour_text)) . ' ' . $_srdvConfig['dateRemiseColis_heures'] . ':' . $_srdvConfig['dateRemiseColis_minutes'] . ':00';
+					 // var_dump("coucou");
+					 // var_dump($dateBegin);
             }
-
+			// var_dump($dateBegin);
+// $dateBegin = '2021-05-10'; 	
+			$datetobegin= $dateBegin;
             $dateBegin = date('Y-m-d', strtotime($dateBegin)) . 'T' . date('H:i:s', strtotime($dateBegin));
 
-            $params = [
-                'callerTool'                => 'RDVWS',
-                'productType'               => 'RDV',
-                'shipperAdress1'            => $this->scopeConfig->getValue('chronorelais/shipperinformation/address1'),
-                'shipperAdress2'            => $this->scopeConfig->getValue('chronorelais/shipperinformation/address2'),
-                'shipperZipCode'            => $this->scopeConfig->getValue('chronorelais/shipperinformation/zipcode'),
-                'shipperCity'               => $this->scopeConfig->getValue('chronorelais/shipperinformation/city'),
-                'shipperCountry'            => $this->scopeConfig->getValue('chronorelais/shipperinformation/country'),
-                'recipientAdress1'          => substr($this->getFilledValue($recipientStreetAddress[0]), 0, 38),
-                'recipientAdress2'          => substr($this->getFilledValue($recipientStreetAddress[1]), 0, 38),
-                'recipientZipCode'          => $this->getFilledValue($shippingAddress->getPostcode()),
-                'recipientCity'             => $this->getFilledValue($shippingAddress->getCity()),
-                'recipientCountry'          => $this->getFilledValue($shippingAddress->getCountryId()),
-                'weight'                    => 1,
-                'dateBegin'                 => $dateBegin,
+		//added fresh
+						// $params['shipperDeliverySlotClosed'] = array();
+						
+            $params = array(
+
+                'callerTool' => 'RDVWS',
+                'productType' => 'RDV',
+
+                'shipperAdress1' => $this->scopeConfig->getValue("chronorelais/shipperinformation/address1"),
+                'shipperAdress2' => $this->scopeConfig->getValue("chronorelais/shipperinformation/address2"),
+                'shipperZipCode' => $this->scopeConfig->getValue("chronorelais/shipperinformation/zipcode"),
+                'shipperCity' => $this->scopeConfig->getValue("chronorelais/shipperinformation/city"),
+                'shipperCountry' => $this->scopeConfig->getValue("chronorelais/shipperinformation/country"),
+
+                'recipientAdress1' => substr($this->getFilledValue($recipient_address[0]), 0, 38),
+                'recipientAdress2' => substr($this->getFilledValue($recipient_address[1]), 0, 38),
+                'recipientZipCode' => $this->getFilledValue($_shippingAddress->getPostcode()),
+                'recipientCity' => $this->getFilledValue($_shippingAddress->getCity()),
+                'recipientCountry' => $this->getFilledValue($_shippingAddress->getCountryId()),
+
+                'weight' => 1,
+                'dateBegin' => $dateBegin,
                 'shipperDeliverySlotClosed' => '',
-                'currency'                  => 'EUR',
-                'isDeliveryDate'            => 0,
-                'slotType'                  => ''
-            ];
+                'currency' => 'EUR',
+                'isDeliveryDate' => 0,
+                'slotType' => ''
+            );
+			//added fresh
+			// if($methodCode == 'chronofreshsrdv' || $methodCode == \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE){
+		 
+				if($methodCode != 'chronorelais'){
+				$params['productType']= 'FRESH';
+				}
+			// }
+			//end fresh
 
-            for ($ite = 1; $ite <= 4; $ite++) {
-                if (isset($srdvConfig['N' . $ite . '_price'])) {
-                    $params['rateN' . $ite] = $srdvConfig['N' . $ite . '_price'];
+            for ($i = 1; $i <= 4; $i++) {
+
+                /* tarif des niveaux tarifaires */
+                if (isset($_srdvConfig['N' . $i . '_price'])) {
+                    $params['rateN' . $i] = $_srdvConfig['N' . $i . '_price'];
                 }
 
-                if (isset($srdvConfig['N' . $ite . '_status']) && $srdvConfig['N' . $ite . '_status'] == 0) {
+                /* niveaux tarifaires fermés  */
+                if (isset($_srdvConfig['N' . $i . '_status']) && $_srdvConfig['N' . $i . '_status'] == 0) {
                     if (!isset($params['rateLevelsNotShow'])) {
-                        $params['rateLevelsNotShow'] = [];
+                        $params['rateLevelsNotShow'] = array();
                     }
-
-                    $params['rateLevelsNotShow'][] = 'N' . $ite;
+                    $params['rateLevelsNotShow'][] = 'N' . $i;
                 }
             }
 
-            // Slots to close
-            if (isset($srdvConfig['creneaux'])) {
-                foreach ($srdvConfig['creneaux'] as $slot) {
-                    $endDate = '';
-                    $beginDate = '';
+// var_dump($_srdvConfig['creneaux']);
+// exit();
+            /* creneaux à fermer */
+            if (isset($_srdvConfig['creneaux'])) {
+                foreach ($_srdvConfig['creneaux'] as $_creneau) {
 
-                    $times = $this->datetime->timestamp(strtotime('Sunday +' . $slot['creneaux_debut_jour'] . ' days'));
-                    $beginDayTxt = date('l', $times);
+                    $jour_debut_text = date('l',
+                        $this->_datetime->timestamp(strtotime("Sunday +" . $_creneau['creneaux_debut_jour'] . " days")));
+                    $jour_fin_text = date('l',
+                        $this->_datetime->timestamp(strtotime("Sunday +" . $_creneau['creneaux_fin_jour'] . " days")));
 
-                    $times = $this->datetime->timestamp(strtotime('Sunday +' . $slot['creneaux_fin_jour'] . ' days'));
-                    $endDayTxt = date('l', $times);
+                    $dateDebut = '';
+                    $dateFin = '';
 
-                    // Creation of slots in the right formats, for 6 consecutive weeks
+                    /* creation de creneaux aux bons formats, pour 6 semaines consécutives */
                     for ($indiceWeek = 0; $indiceWeek < 6; $indiceWeek++) {
-                        if (empty($beginDate)) {
-                            $slotBeginHour = (int)$slot['creneaux_debut_heures'];
-                            $slotBeginMin = (int)$slot['creneaux_debut_minutes'];
-                            $date = date('Y-m-d', $this->datetime->timestamp(strtotime('next ' . $beginDayTxt)));
-                            $beginDate = sprintf('%s %s:%s:00', $date, $slotBeginHour, $slotBeginMin);
 
-                            $slotEndHour = (int)$slot['creneaux_fin_heures'];
-                            $slotEndMin = (int)$slot['creneaux_fin_minutes'];
-                            $date = date('Y-m-d', $this->datetime->timestamp(strtotime('next ' . $endDayTxt)));
-                            $endDate = sprintf('%s %s:%s:00', $date, $slotEndHour, $slotEndMin);
-
-                            if (date('N') >= $slot['creneaux_debut_jour']) {
-                                $slotBeginHour = (int)$slot['creneaux_debut_heures'];
-                                $slotBeginMin = (int)$slot['creneaux_debut_minutes'];
-                                $dateNext = strtotime(date('Y-m-d', strtotime($beginDate)) . ' -7 days');
-                                $date = date('Y-m-d', $this->datetime->timestamp($dateNext));
-                                $beginDate = sprintf('%s %s:%s:00', $date, $slotBeginHour, $slotBeginMin);
+                        if (empty($dateDebut)) {
+                            $dateDebut = date('Y-m-d',
+                                    $this->_datetime->timestamp(strtotime('next ' . $jour_debut_text))) . ' ' . (int)$_creneau['creneaux_debut_heures'] . ':' . (int)$_creneau['creneaux_debut_minutes'] . ':00';
+                            $dateFin = date('Y-m-d',
+                                    $this->_datetime->timestamp(strtotime('next ' . $jour_fin_text))) . ' ' . (int)$_creneau['creneaux_fin_heures'] . ':' . (int)$_creneau['creneaux_fin_minutes'] . ':00';
+                            if (date('N') >= $_creneau['creneaux_debut_jour']) {
+                                $dateDebut = date('Y-m-d',
+                                        $this->_datetime->timestamp(strtotime(date('Y-m-d',
+                                                strtotime($dateDebut)) . ' -7 day'))) . ' ' . (int)$_creneau['creneaux_debut_heures'] . ':' . (int)$_creneau['creneaux_debut_minutes'] . ':00';
+                            }
+                            if (date('N') >= $_creneau['creneaux_fin_jour']) {
+                                $dateFin = date('Y-m-d', $this->_datetime->timestamp(strtotime(date('Y-m-d',
+                                            strtotime($dateFin)) . ' -7 day'))) . ' ' . (int)$_creneau['creneaux_fin_heures'] . ':' . (int)$_creneau['creneaux_fin_minutes'] . ':00';
                             }
 
-                            if (date('N') >= $slot['creneaux_fin_jour']) {
-                                $slotEndHour = (int)$slot['creneaux_fin_heures'];
-                                $slotEndMin = (int)$slot['creneaux_fin_minutes'];
-                                $datePrev = strtotime(date('Y-m-d', strtotime($endDate)) . ' -7 days');
-                                $date = date('Y-m-d', $this->datetime->timestamp($datePrev));
-                                $endDate = sprintf('%s %s:%s:00', $date, $slotEndHour, $slotEndMin);
-                            }
                         } else {
-                            $dateFtdBegin = date('Y-m-d', $this->datetime->timestamp(strtotime($beginDate)));
-                            $dateNext = strtotime($beginDayTxt . ' next week ' . $dateFtdBegin);
-                            $date = date('Y-m-d', $this->datetime->timestamp($dateNext));
-                            $slotBeginHour = (int)$slot['creneaux_debut_heures'];
-                            $slotBeginMin = (int)$slot['creneaux_debut_minutes'];
-                            $beginDate = sprintf('%s %s:%s:00', $date, $slotBeginHour, $slotBeginMin);
-
-                            $dateFtdEnd = date('Y-m-d', $this->datetime->timestamp(strtotime($endDate)));
-                            $dateNext = strtotime($endDayTxt . ' next week ' . $dateFtdEnd);
-                            $date = date('Y-m-d', $this->datetime->timestamp($dateNext));
-                            $slotEndHour = (int)$slot['creneaux_fin_heures'];
-                            $slotEndMin = (int)$slot['creneaux_fin_minutes'];
-                            $endDate = sprintf('%s %s:%s:00', $date, $slotEndHour, $slotEndMin);
+                            $dateDebut = date('Y-m-d',
+                                    $this->_datetime->timestamp(strtotime($jour_debut_text . ' next week ' . date('Y-m-d',
+                                            $this->_datetime->timestamp(strtotime($dateDebut)))))) . ' ' . (int)$_creneau['creneaux_debut_heures'] . ':' . (int)$_creneau['creneaux_debut_minutes'] . ':00';
+                            $dateFin = date('Y-m-d',
+                                    $this->_datetime->timestamp(strtotime($jour_fin_text . ' next week ' . date('Y-m-d',
+                                            $this->_datetime->timestamp(strtotime($dateFin)))))) . ' ' . (int)$_creneau['creneaux_fin_heures'] . ':' . (int)$_creneau['creneaux_fin_minutes'] . ':00';
                         }
 
-                        $beginDateStr = date('Y-m-d', $this->datetime->timestamp(strtotime($beginDate)));
-                        $beginDateStr .= 'T' . date('H:i:s', $this->datetime->timestamp(strtotime($beginDate)));
-
-                        $endDateStr = date('Y-m-d', $this->datetime->timestamp(strtotime($endDate)));
-                        $endDateStr .= 'T' . date('H:i:s', $this->datetime->timestamp(strtotime($endDate)));
-
-                        if (!isset($params['shipperDeliverySlotClosed'])) {
-                            $params['shipperDeliverySlotClosed'] = [];
+                        $dateDebutStr = date('Y-m-d',
+                                $this->_datetime->timestamp(strtotime($dateDebut))) . 'T' . date('H:i:s',
+                                $this->_datetime->timestamp(strtotime($dateDebut)));
+                        $dateFinStr = date('Y-m-d',
+                                $this->_datetime->timestamp(strtotime($dateFin))) . 'T' . date('H:i:s',
+                                $this->_datetime->timestamp(strtotime($dateFin)));
+				
+                        if (!isset($params['shipperDeliverySlotClosed'][0])) {
+                            $params['shipperDeliverySlotClosed'] = array();
                         }
-
-                        $params['shipperDeliverySlotClosed'][] = $beginDateStr . "/" . $endDateStr;
+                        $params['shipperDeliverySlotClosed'][] = $dateDebutStr . "/" . $dateFinStr;
                     }
                 }
             }
+			
+			// var_dump($_srdvConfig['creneaux']);
+// exit();
+// var_dump($params['shipperDeliverySlotClosed']);
+// exit();
+// $params['shipperDeliverySlotClosed'][] = '2021-05-10T00:00:00.0/2021-05-10T00:00:00.0';
+// $params['shipperDeliverySlotClosed'] = array();
+// $params['shipperDeliverySlotClosed'][] = "2021-04-27T00:00:00/2021-04-28T00:00:00";
 
+// $params['shipperDeliverySlotClosed'][] = "2021-04-29T00:00:00/2021-04-30T00:00:00";
+
+// var_dump($params['shipperDeliverySlotClosed']);
+// exit();
+// array(1) {
+  // [0]=>
+  // string(39) "2021-05-27T00:00:00/2021-05-28T00:00:00"
+// }
+// echo '<pre>';
+// var_dump($params);
+// exit();
+ 
+ //added filter plage
+                         if (!isset($params['shipperDeliverySlotClosed'][0])) {
+                            $params['shipperDeliverySlotClosed'] = array();
+                        }
+						
+								// $params['shipperDeliverySlotClosed'] = array();
+								
+		$collection = $this->chronordvcollec->create();
+		$collection->addFieldToFilter('created_at',array("gteq"=>$datetobegin));
+		$collection->addFieldToFilter('quotaslimit',array("eq"=> 1));
+
+		foreach($collection as $data){
+			$dateDebutStr = date('Y-m-dT00:00:00', strtotime($data->getData('created_at')));
+			$dateFinStr = date("Y-m-dT00:00:00",strtotime($data->getData('created_at') .'+1 days'));
+			$dateDebutStr = str_replace("UTC", "T", $dateDebutStr);
+			$dateFinStr = str_replace("UTC", "T", $dateFinStr);
+			$params['shipperDeliverySlotClosed'][] = $dateDebutStr . "/" . $dateFinStr;
+		}
+ 
+ 
+ // var_dump($params);
             $webservbt = $client->searchDeliverySlot($params);
-            if ($webservbt->return->code === 0) {
+
+            if ($webservbt->return->code == 0) {
                 return $webservbt;
             }
 
             return false;
-        } catch (\Exception $exception) {
-            return false;
-        }
+        // } catch (\Exception $e) {
+            // return false;
+        // }
     }
 
     /**
-     * Confirm delivery slot
-     *
-     * @param array $rdvInfo
-     *
+     * @param string $rdvInfo
      * @return bool
      */
-    public function confirmDeliverySlot(array $rdvInfo = [])
+    public function confirmDeliverySlot($rdvInfo = '',$carrierModel = \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE)
     {
         try {
+
             $accountNumber = '';
             $accountPassword = '';
-
-            $contract = $this->helperData->getCarrierContract(ChronopostSrdv::CARRIER_CODE);
+            $contract = $this->_helperData->getCarrierContract($carrierModel);
             if ($contract != null) {
                 $accountNumber = $contract['number'];
                 $accountPassword = $contract['pass'];
             }
 
-            $soapHeaders = [];
+            $soapHeaders = array();
             $namespace = 'http://cxf.soap.ws.creneau.chronopost.fr/';
             $soapHeaders[] = new \SoapHeader($namespace, 'password', $accountPassword);
             $soapHeaders[] = new \SoapHeader($namespace, 'accountNumber', $accountNumber);
 
-            $client = new \SoapClient(
-                self::WS_RDV_CRENEAUX,
-                ['trace' => 1, 'connection_timeout' => 10]
-            );
-
+            $client = new \SoapClient(self::WS_RDV_CRENEAUX,
+                array('trace' => 1, 'connection_timeout' => 10));
             $client->__setSoapHeaders($soapHeaders);
 
-            $params = [
-                'callerTool'    => 'RDVWS',
-                'productType'   => 'RDV',
-                'codeSlot'      => $rdvInfo['deliverySlotCode'],
-                'meshCode'      => $rdvInfo['meshCode'],
+            $params = array(
+                'callerTool' => 'RDVWS',
+                'productType' => 'RDV', //FRESH
+
+                'codeSlot' => $rdvInfo['deliverySlotCode'],
+                'meshCode' => $rdvInfo['meshCode'],
                 'transactionID' => $rdvInfo['transactionID'],
-                'rank'          => $rdvInfo['rank'],
-                'position'      => $rdvInfo['rank'],
-                'dateSelected'  => $rdvInfo['deliveryDate']
-            ];
+                'rank' => $rdvInfo['rank'],
+                'position' => $rdvInfo['rank'],
+                'dateSelected' => $rdvInfo['deliveryDate']
+            );
+			
+			//added fresh
+			if($carrierModel == 'chronofreshsrdv' || $carrierModel == \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE){
+				$params['productType']= 'FRESH';
+			}
+			//end fresh
+
 
             return $client->confirmDeliverySlotV2($params);
-        } catch (\Exception $exception) {
+        } catch (\Exception $e) {
             return false;
         }
     }
 
-    /**
-     * Get labels by reservation number
-     *
-     * @param string      $number
-     * @param string|null $shippingMethod
-     * @param string      $type
-     * @param Address     $shippingAddress
-     *
-     * @return mixed
-     * @throws \SoapFault
-     */
-    public function getEtiquetteByReservationNumber(
-        string $number,
-        string $shippingMethod,
-        string $type,
-        Address $shippingAddress
-    ) {
-        $client = new \SoapClient(self::WS_SHIPPING_SERVICE, ['trace' => true]);
+    public function getEtiquetteByReservationNumber($number){
 
-        if ($type === 'return') {
-            $mode = 'PDF';
-            $productCode = $this->getReturnProductCode($shippingAddress, $shippingMethod);
-            if ($productCode === Data::CHRONOPOST_REVERSE_RELAY_EUROPE) {
-                $mode = 'PPR';
-            }
-        } else {
-            $mode = $this->scopeConfig->getValue('chronorelais/skybillparam/mode');
-            if ($shippingMethod === 'chronorelaiseur') {
-                $mode = 'PPR';
-            }
-        }
+        $client = new \SoapClient(self::WS_SHIPPING_SERVICE, array('trace' => true));
 
-        $expedition = $client->getReservedSkybillWithTypeAndMode(['reservationNumber' => $number, 'mode' => $mode]);
+        $expedition = $client->getReservedSkybill(array('reservationNumber'=> $number));
+
+
         if (!$expedition->return->errorCode) {
             return $expedition->return->skybill;
         } else {
@@ -1998,217 +1822,136 @@ class Webservice extends AbstractHelper
                     $message = __($expedition->return->errorMessage);
                     break;
             }
-
-            throw new \Exception((string)$message);
+            Throw new \Exception ($message);
         }
+
     }
 
-    /**
-     * Check contract
-     *
-     * @param array $contract
-     *
-     * @return bool
-     */
-    public function checkContract(array $contract)
+    public function checkContract($contract)
     {
-        $WSParams = [
-            'accountNumber'  => $contract['number'],
-            'password'       => $contract['pass'],
-            'depCountryCode' => $this->helperData->getConfig('chronorelais/shipperinformation/country'),
-            'depZipCode'     => $this->helperData->getConfig('chronorelais/shipperinformation/zipcode'),
-            'arrCountryCode' => $this->helperData->getConfig('chronorelais/shipperinformation/country'),
-            'arrZipCode'     => $this->helperData->getConfig('chronorelais/shipperinformation/zipcode'),
-            'arrCity'        => $this->helperData->getConfig('chronorelais/shipperinformation/city'),
-            'type'           => 'M',
-            'weight'         => 1
-        ];
+        $WSParams = array(
+            'accountNumber' => $contract['number'],
+            'password' => $contract['pass'],
+            'depCountryCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/country"),
+            'depZipCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/zipcode"),
+            'arrCountryCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/country"),
+            'arrZipCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/zipcode"),
+            'arrCity' => $this->_helperData->getConfig("chronorelais/shipperinformation/city"),
+            'type' => 'M',
+            'weight' => 1
+        );
 
         return $this->checkLogin($WSParams);
     }
 
     /**
-     * Check if shipping method is enabled
-     *
-     * @param string      $shippingMethod
-     * @param null|string $contractId
+     * @param      $shippingMethod
+     * @param null $contractId
+     * @param null $storeId
+     * @param null $websiteId
      *
      * @return bool
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
      */
-    public function shippingMethodEnabled(string $shippingMethod, $contractId = null)
+    public function shippingMethodEnabled($shippingMethod, $contractId = null, $storeId = null, $websiteId = null)
     {
-        if ($contractId !== null) {
-            $contract = $this->helperData->getSpecificContract($contractId);
+		//nimp
+	   return true;
+        if($contractId != null) {
+            $contract = $this->_helperData->getSpecificContract($contractId, $storeId, $websiteId);
         } else {
-            $contract = $this->helperData->getCarrierContract($shippingMethod);
+            $contract = $this->_helperData->getCarrierContract($shippingMethod);
         }
 
         if (!$contract) {
             return false;
         }
 
-        $WSParams = [
-            'accountNumber'  => $contract['number'],
-            'password'       => $contract['pass'],
-            'depCountryCode' => $this->helperData->getConfigurationShipperInfo('country'),
-            'depZipCode'     => $this->helperData->getConfigurationShipperInfo('zipcode'),
-            'arrCountryCode' => $this->helperData->getConfigurationShipperInfo('country'),
-            'arrZipCode'     => $this->helperData->getConfigurationShipperInfo('zipcode'),
-            'arrCity'        => $this->helperData->getConfigurationShipperInfo('city'),
-            'type'           => 'M',
-            'weight'         => 1
-        ];
+        $accountNumber = $contract["number"];
+        $pass = $contract["pass"];
+
+        $WSParams = array(
+            'accountNumber' => $accountNumber,
+            'password' => $pass,
+            'depCountryCode' => $this->_helperData->getConfigurationShipperInfo('country'),
+            'depZipCode' => $this->_helperData->getConfigurationShipperInfo('zipcode'),
+            'arrCountryCode' => $this->_helperData->getConfigurationShipperInfo('country'),
+            'arrZipCode' => $this->_helperData->getConfigurationShipperInfo('zipcode'),
+            'arrCity' => $this->_helperData->getConfigurationShipperInfo('city'),
+            'type' => 'M',
+            'weight' => 1
+        );
 
         $webservbt = $this->checkLogin($WSParams);
-        if (!$webservbt->return->errorCode) {
-            $products = $webservbt->return->productList;
 
+        if(!$webservbt->return->errorCode){
+
+            // recupération des codes produits internationals
+            $products = $webservbt->return->productList;
             $WSParams['arrCountryCode'] = 'ES';
             $WSParams['arrZipCode'] = '28013';
             $WSParams['arrCity'] = 'ES';
 
             $webservbt = $this->checkLogin($WSParams);
-            if (!$webservbt->return->errorCode) {
-                if ($productsInter = $webservbt->return->productList) {
-                    if (is_array($products) && is_array($productsInter)) {
+
+            if(!$webservbt->return->errorCode){
+                if($productsInter = $webservbt->return->productList) {
+                    if(is_array($products) && is_array($productsInter)) {
                         $products = array_merge($products, $productsInter);
                     } else {
-                        array_push($products, $productsInter);
+                        array_push($products, $productsInter->productCode);
                     }
                 }
             }
 
-            $WSParams['arrCountryCode'] = 'RE';
-            $WSParams['arrZipCode'] = '97400';
-            $WSParams['arrCity'] = 'Saint-Denis';
-
-            $webservbt = $this->checkLogin($WSParams);
-            if (!$webservbt->return->errorCode) {
-                if ($productsDom = $webservbt->return->productList) {
-                    if (is_array($products) && is_array($productsDom)) {
-                        $products = array_merge($products, $productsDom);
-                    } else {
-                        array_push($products, $productsDom);
-                    }
-                }
-            }
-
-            if (is_array($products)) {
+            if(is_array($products)) {
                 foreach ($products as $product) {
-                    if ($this->helperData->getChronoProductCode($shippingMethod) == $product->productCode) {
+					if(isset($product->productCode)){
+                    if($this->_helperData->getChronoProductCode($shippingMethod) == $product->productCode){
                         return true;
                     }
+					}
                 }
-            } elseif ($this->helperData->getChronoProductCodeToShipment($shippingMethod) == $products->productCode) {
-                return true;
+            } else {
+                if($this->_helperData->getChronoProductCodeToShipment($shippingMethod) == $products->productCode){
+                    return true;
+                }
             }
         }
-
         return false;
     }
 
-    /**
-     * Get contracts in html
-     *
-     * @param string $orderId
-     *
-     * @return string
-     */
-    public function getContractsHtml(string $orderId)
+    public function getContractsHtml($orderId)
     {
-        $order = $this->orderRepository->get($orderId);
-        $contracts = $this->helperData->getConfigContracts();
+        $order = $this->_orderRepository->get($orderId);
 
-        if ($contract = $this->helperData->getContractByOrderId($orderId)) {
-            $html = '';
-            foreach ($contracts as $id => $item) {
-                if ($item['number'] === $contract['contract_account_number']) {
-                    $html = '<select name="contract" style="display:none">';
-                    $html .= '<option value="' . $id . '" selected="selected">' . $contract['contract_name'] . '</option>';
-                    $html .= '</select>';
-                    $html .= '<span>' . $contract['contract_name'] . '</span>';
-                    break;
-                }
-            }
-
+        if($contract = $this->_helperData->getContractByOrderId($orderId)) {
+            $html  = '<select name="contract" style="display:none">';
+            $html .= '<option value="-1" selected="selected">' . $contract["contract_name"] . '</option>';
+            $html .= '</select>';
+            $html .= '<span>' . $contract["contract_name"] . '</span>';
             return $html;
         } else {
             $html = '<select name="contract">';
-
             $chronoShippingMethod = strtolower(str_replace(' ', '', $order->getShippingMethod()));
             $chronoShippingMethod = preg_replace('/.*\_/', '', $chronoShippingMethod);
-            $contractShippingMethod = $this->helperData->getCarrierContract($chronoShippingMethod);
-
+            $contractShippingMethod = $this->_helperData->getCarrierContract($chronoShippingMethod);
+            $contracts = $this->_helperData->getConfigContracts();
             foreach ($contracts as $id => $contract) {
-                $shippingMethodCode = explode('_', $chronoShippingMethod);
+                $shippingMethodCode = explode("_", $chronoShippingMethod);
                 $shippingMethodCode = isset($shippingMethodCode[1]) ? $shippingMethodCode[1] : $shippingMethodCode[0];
-                if (!$this->shippingMethodEnabled($shippingMethodCode, $id)) {
+                if(!$this->shippingMethodEnabled($shippingMethodCode, $id)){
                     continue;
                 }
-
-                if ($contract['number'] == $contractShippingMethod['number']) {
-                    $html .= '<option value="' . $id . '" selected="selected">' . $contract['name'] . '</option>';
+                if($contract["number"] == $contractShippingMethod["number"]){
+                    $html .= '<option value="' . $id . '" selected="selected">' . $contract["name"] . '</option>';
                 } else {
-                    $html .= '<option value="' . $id . '">' . $contract['name'] . '</option>';
+                    $html .= '<option value="' . $id . '">' . $contract["name"] . '</option>';
                 }
             }
-
             $html .= '</select>';
 
             return $html;
         }
     }
 
-    /**
-     * Get shipment service code
-     *
-     * @param string   $shippingMethod
-     * @param bool     $optionSaturday
-     * @param Shipment $shipment
-     *
-     * @return int
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     */
-    private function getShipmentServiceCode(string $shippingMethod, bool $optionSaturday, Shipment $shipment)
-    {
-        switch ($shippingMethod) {
-            case 'chronopost':
-                $serviceCode = ($optionSaturday === true) ? 897 : 899;
-                break;
-            case 'chronopostc10':
-                $serviceCode = ($optionSaturday === true) ? 182 : 179;
-                break;
-            case 'chronopostc18':
-                $serviceCode = ($optionSaturday === true) ? 832 : 830;
-                break;
-            case 'chronoexpress':
-                $serviceCode = 302;
-                break;
-            case 'chronocclassic':
-                $serviceCode = 101;
-                break;
-            case 'chronorelais':
-                $serviceCode = 848;
-                break;
-            case 'chronorelaiseur':
-                $serviceCode = $this->getParamWeight($shipment) <= 3 ? 337 : 338;
-                break;
-            case 'chronorelaisdom':
-                $serviceCode = 368;
-                break;
-            case 'chronopostsrdv':
-                $serviceCode = 976;
-                break;
-            case 'chronosameday':
-                $serviceCode = ($optionSaturday === true) ? 974 : 973;
-                break;
-            default:
-                $serviceCode = ($optionSaturday === true) ? 6 : 0;
-                break;
-        }
-
-        return $serviceCode;
-    }
 }

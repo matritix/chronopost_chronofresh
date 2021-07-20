@@ -1,38 +1,17 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
 
 namespace Chronopost\Chronorelais\Controller\Adminhtml\Sales\Impression;
 
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\View\Result\PageFactory;
+use \Magento\Framework\App\Filesystem\DirectoryList;
+
+use Magento\Ui\Component\MassAction\Filter;
+use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
+
 use Chronopost\Chronorelais\Helper\Data as HelperData;
 use Chronopost\Chronorelais\Helper\Shipment as HelperShipment;
-use Chronopost\Chronorelais\Lib\PDFMerger\PDFMerger;
-use Magento\Backend\App\Action\Context;
-use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\App\ResponseInterface;
-use Magento\Framework\Controller\Result\Redirect;
-use Magento\Framework\Controller\ResultInterface;
-use Magento\Framework\Message\ManagerInterface;
-use Magento\Framework\View\Result\PageFactory;
-use Magento\Sales\Model\ResourceModel\Order\CollectionFactory;
-use Magento\Ui\Component\MassAction\Filter;
 
-/**
- * Class PrintEtiquetteMass
- *
- * @package Chronopost\Chronorelais\Controller\Adminhtml\Sales\Impression
- */
 class PrintEtiquetteMass extends AbstractImpression
 {
 
@@ -44,133 +23,119 @@ class PrintEtiquetteMass extends AbstractImpression
     /**
      * @var CollectionFactory
      */
-    protected $collectionFactory;
+    protected $_collectionFactory;
 
     /**
      * @var Filter
      */
-    protected $filter;
+    protected $_filter;
 
     /**
      * @var HelperShipment
      */
-    protected $helperShipment;
+    protected $_helperShipment;
 
     /**
      * PrintEtiquetteMass constructor.
-     *
-     * @param Context           $context
-     * @param DirectoryList     $directoryList
-     * @param PageFactory       $resultPageFactory
-     * @param HelperData        $helperData
-     * @param PDFMerger         $PDFMerger
-     * @param ManagerInterface  $messageManager
-     * @param HelperShipment    $helperShipment
-     * @param Filter            $filter
+     * @param Context $context
+     * @param DirectoryList $directoryList
+     * @param PageFactory $resultPageFactory
+     * @param Filter $filter
      * @param CollectionFactory $collectionFactory
+     * @param HelperData $helperData
+     * @param HelperShipment $helperShipment
      */
     public function __construct(
         Context $context,
         DirectoryList $directoryList,
         PageFactory $resultPageFactory,
-        HelperData $helperData,
-        PDFMerger $PDFMerger,
-        ManagerInterface $messageManager,
-        HelperShipment $helperShipment,
         Filter $filter,
-        CollectionFactory $collectionFactory
-    ) {
-        parent::__construct($context, $directoryList, $resultPageFactory, $helperData, $PDFMerger, $messageManager);
-        $this->helperData = $helperData;
-        $this->helperShipment = $helperShipment;
-        $this->filter = $filter;
-        $this->collectionFactory = $collectionFactory;
+        CollectionFactory $collectionFactory,
+        HelperData $helperData,
+        HelperShipment $helperShipment
+    )
+    {
+        parent::__construct($context, $directoryList, $resultPageFactory, $helperData);
+        $this->_helperShipment = $helperShipment;
+        $this->_filter = $filter;
+        $this->_collectionFactory = $collectionFactory;
     }
 
     /**
-     * Mass print label
-     *
-     * @return ResponseInterface|Redirect|ResultInterface
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @return \Magento\Framework\Controller\Result\Redirect
      */
     public function execute()
     {
         $resultRedirect = $this->resultRedirectFactory->create();
-        $data = $this->getRequest()->getParam('data');
 
         try {
-            $collection = $this->filter->getCollection($this->collectionFactory->create());
+            $collection = $this->_filter->getCollection($this->_collectionFactory->create());
+            if (count($collection->getItems()) > 1 && !$this->gsIsActive()) {
+                throw new \Exception(__("Please install Ghostscript on your server for bulk printing"));
+            }
 
-            $labelUrl = [];
+            $etiquetteUrl = array();
             foreach ($collection->getItems() as $order) {
-                if ($order && $order->getId()) {
-                    $shippingMethodCode = explode('_', $order->getData('shipping_method'));
-                    $shippingMethodCode = isset($shippingMethodCode[1]) ? $shippingMethodCode[1] :
-                        $shippingMethodCode[0];
 
-                    if (!$this->helperData->isChronoMethod($shippingMethodCode)) {
-                        throw new \Exception(
-                            (string)__('Delivery option not Chronopost for order %1', $order->getIncrementId())
-                        );
+                if ($order && $order->getId()) {
+                    $shippingMethod = $order->getData('shipping_method');
+                    $shippingMethodCode = explode("_", $shippingMethod);
+                    $shippingMethodCode = isset($shippingMethodCode[1]) ? $shippingMethodCode[1] : $shippingMethodCode[0];
+                    if (!$this->_helperData->isChronoMethod($shippingMethodCode)) { /* methode NON chronopost */
+                        Throw new \Exception("Delivery option not Chronopost for order %1", $order->getIncrementId());
                     }
 
-                    $packageList = $data[$order->getId()];
-                    $dimensions = json_decode($packageList['dimensions'], true);
 
-                    $shipments = $order->getShipmentsCollection();
-                    if ($shipments->count()) {
-                        foreach ($shipments as $shipment) {
-                            $labelUrl = array_merge(
-                                $labelUrl,
-                                $this->helperShipment->getEtiquetteUrl(
-                                    $shipment,
-                                    null,
-                                    'shipping',
-                                    $dimensions
-                                )
-                            );
-                        }
-                    } elseif (isset($data[$order->getId()])) {
-                        $createdShipment = $this->helperShipment->createNewShipment(
-                            $order,
-                            [],
-                            [],
-                            $dimensions,
-                            isset($packageList['nb_colis']) ? $packageList['nb_colis'] : 1,
-                            false,
-                            isset($packageList['contract_id']) ? $packageList['contract_id'] : null
-                        );
+                    $_shipments = $order->getShipmentsCollection();
 
-                        if ($createdShipment) {
-                            $labelUrl = array_merge(
-                                $labelUrl,
-                                $this->helperShipment->getEtiquetteUrl(
-                                    $createdShipment,
-                                    null,
-                                    'shipping',
-                                    $dimensions
-                                )
-                            );
+                    if ($_shipments->count()) { /* expedition existe deja */
+
+                        /* si 1 seule expédition : on recup l'url de l'étiquette */
+                        if ($_shipments->count() == 1) {
+                            /* @TOOO récup url etiquette existante */
+                            $_shipment = $_shipments->getFirstItem();
+
+                            $etiquetteUrl = array_merge($etiquetteUrl, $this->_helperShipment->getEtiquetteUrl($_shipment));
+
+                        } else {
+                            if ($this->gsIsActive()) {
+                                foreach ($_shipments as $_shipment) {
+                                    $etiquetteUrl = array_merge($etiquetteUrl, $this->_helperShipment->getEtiquetteUrl($_shipment));
+                                }
+                            } else {
+                                $this->messageManager->addNoticeMessage(__("This order contains several shipments, click the link to obtain the labels"));
+                                $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
+                                return $resultRedirect;
+                            }
                         }
                     }
                 }
+
             }
+            if (count($etiquetteUrl)) {
+                if (count($etiquetteUrl) === 1) {
 
-            if (count($labelUrl) === 1) {
-                $this->prepareDownloadResponse('Etiquette_chronopost.pdf', $labelUrl[0]);
-            } elseif (count($labelUrl) > 1) {
-                $this->_processDownloadMass($labelUrl);
-            } else {
-                $this->messageManager->addNoticeMessage(__('No LT for the selected order(s).'));
-                $resultRedirect->setPath('chronorelais/sales/impression');
-
+                    $this->prepareDownloadResponse('Etiquette_chronopost.pdf', $etiquetteUrl[0]);
+                } else { /* plusieurs etiquettes générées */
+                    if ($this->gsIsActive()) {
+                        $this->_processDownloadMass($etiquetteUrl);
+                    } else {
+                        $this->messageManager->addNoticeMessage(__("This order contains several shipments, click the link to obtain the labels"));
+                        $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
+                        return $resultRedirect;
+                    }
+                }
+            }else{
+                $this->messageManager->addNoticeMessage(__("Aucune LT pour les commande(s) selectionnée(s)."));
+                $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
                 return $resultRedirect;
             }
-        } catch (\Exception $exception) {
-            $this->messageManager->addErrorMessage(__($exception->getMessage()));
-            $resultRedirect->setPath('chronorelais/sales/impression');
 
+        } catch (\Exception $e) {
+            $this->messageManager->addErrorMessage(__($e->getMessage()));
+            $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
             return $resultRedirect;
         }
     }
+
 }

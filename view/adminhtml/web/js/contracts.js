@@ -13,7 +13,7 @@ define([
             clone.removeClass("item-0");
             clone.addClass("item-" + nbContracts);
 
-            var temp = "<button class=\"scalable deleteContract\" type=\"button\" id=\"" + nbContracts + "\"><span>" + config.labelbuttondelete + "</span></button>";
+            var temp = "<button class=\"scalable deleteContract\" type=\"button\" id=\"" + nbContracts + "\"><span>"+config.labelbuttondelete+"</span></button>";
             clone.find('button.createContract').remove();
             clone.find('button.checkContract').after(temp);
             main_container.append(clone);
@@ -22,12 +22,13 @@ define([
             for (var i = 0; i < inputs.length; i++) {
                 inputs[i].value = "";
             }
+
         }
 
         function deleteContract(button) {
-            var elemContainer = '.container-contract.item-' + $(button).attr('id');
+            var main_container = document.getElementById('main-container');
+            var elemContainer = '.container-contract.item-'+$(button).attr('id');
             $(elemContainer).remove();
-
             buildConfigObject();
         }
 
@@ -54,7 +55,8 @@ define([
                         var msg = '<strong style="color:#007700;">Identification réussie.</strong>';
                         if (response.errorCode == undefined) {
                             msg = '<strong>Le webservice est momentanément inaccessible. Veuillez réessayer plus tard.</strong>';
-                        } else if (response.errorCode != 0) {
+                        }
+                        else if (response.errorCode != 0) {
                             msg = '<strong style="color:#FF0000;">Les identifiants que vous avez renseignés ne sont pas valides.</strong>'
                         }
                         document.querySelector('.' + result[0] + ' #validation_result').update(msg);
@@ -81,7 +83,7 @@ define([
                     config[i] = contrat;
                 }
             }
-
+            console.log(JSON.stringify(config));
             $('#chronorelais_contracts_contracts').val(JSON.stringify(config));
         }
 
@@ -122,27 +124,41 @@ define([
             };
         }
 
+
         $(document).ready(function () {
+
             _init();
 
             $('#main-container').on('keyup', 'input.contractfield', debounce(function () {
+
                 buildConfigObject();
+
             }, 350));
 
 
             $('#row_chronorelais_contracts_contracts').on('click', 'button.createContract', function () {
+
                 buildContractContainer();
+
             });
 
             $('#main-container').on('click', 'button.deleteContract', function () {
+
                 deleteContract(this);
+
             });
 
             $('#main-container').on('click', 'button.checkContract', function () {
+
                 checkLogin(this);
+
             });
+
         });
+
+
     }
+
 });
 
 

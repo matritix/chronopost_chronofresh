@@ -1,31 +1,10 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Controller\Adminhtml\Sales;
 
 use Magento\Backend\App\Action\Context;
-use Magento\Backend\Model\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
-use Magento\Backend\App\Action;
 
-/**
- * Class Bordereau
- *
- * @package Chronopost\Chronorelais\Controller\Adminhtml\Sales
- */
-class Bordereau extends Action
+class Bordereau extends \Magento\Backend\App\Action
 {
 
     /**
@@ -34,9 +13,7 @@ class Bordereau extends Action
     protected $resultPageFactory;
 
     /**
-     * Bordereau constructor.
-     *
-     * @param Context     $context
+     * @param Context $context
      * @param PageFactory $resultPageFactory
      */
     public function __construct(
@@ -50,11 +27,11 @@ class Bordereau extends Action
     /**
      * Index action
      *
-     * @return Page
+     * @return \Magento\Backend\Model\View\Result\Page
      */
     public function execute()
     {
-        /** @var Page $resultPage */
+        /** @var \Magento\Backend\Model\View\Result\Page $resultPage */
         $resultPage = $this->resultPageFactory->create();
         $resultPage->setActiveMenu('Chronopost_Chronorelais::sales');
         $resultPage->getConfig()->getTitle()->prepend(__('End of day slip'));
@@ -63,7 +40,7 @@ class Bordereau extends Action
     }
 
     /**
-     * Check is the current user is allowed to access this section
+     * Is the user allowed to view the blog post grid.
      *
      * @return bool
      */
@@ -71,4 +48,6 @@ class Bordereau extends Action
     {
         return $this->_authorization->isAllowed('Chronopost_Chronorelais::sales');
     }
+
+
 }

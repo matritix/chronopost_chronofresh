@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
 <listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
     <argument name="data" xsi:type="array">
         <item name="js_config" xsi:type="array">
@@ -58,7 +64,7 @@
                     <item name="config" xsi:type="array">
                         <item name="type" xsi:type="string">format</item>
                         <item name="label" xsi:type="string" translate="true">Export CSS Format</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/export_export">
+                        <item name="url" xsi:type="url" path="chronopost_chronorelais/sales/export_export">
                             <param name="format">css</param>
                         </item>
                     </item>
@@ -205,33 +211,11 @@
                 </item>
             </argument>
         </column>
-        <column name="force_saturday_option" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOption">
+        <column name="livraison_le_samedi" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\LivraisonSamedi">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="filter" xsi:type="string">text</item>
-                    <item name="label" xsi:type="string" translate="true">Delivery on Saturday (customer choice)</item>
-                </item>
-            </argument>
-        </column>
-        <column name="force_saturday_option_export" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOptionExport">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="component" xsi:type="string">Magento_Ui/js/grid/columns/thumbnail</item>
-                    <item name="filter" xsi:type="string">text</item>
-                    <item name="label" xsi:type="string" translate="true">Delivery on Saturday (admin value)</item>
-                    <item name="altField" xsi:type="string">name</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
-                </item>
-            </argument>
-        </column>
-        <column name="force_saturday_option_generated" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOptionGenerated">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="component" xsi:type="string">Magento_Ui/js/grid/columns/thumbnail</item>
                     <item name="filter" xsi:type="string">text</item>
                     <item name="label" xsi:type="string" translate="true">Delivery on Saturday</item>
-                    <item name="altField" xsi:type="string">name</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>
             </argument>
         </column>

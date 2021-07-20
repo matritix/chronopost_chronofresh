@@ -7,15 +7,7 @@ $_element = $block->getElement();
 
 <!-- Template JS config -->
 <script id="srdv_template_config" type="text/x-magento-template">
-    <?php $jours = [
-        __("Monday"),
-        __("Tuesday"),
-        __("Wednesday"),
-        __("Thursday"),
-        __("Friday"),
-        __("Saturday"),
-        __("Sunday")
-    ]; ?>
+    <?php $jours = array(__("Monday"),__("Tuesday"),__("Wednesday"),__("Thursday"),__("Friday"),__("Saturday"),__("Sunday")); ?>
 
     <tr id="row_<?php echo $_element->getHtmlId() ?>_dateRemiseColis" class="rdv_config">
         <td class="label">
@@ -27,7 +19,7 @@ $_element = $block->getElement();
                     <td>
                         <?php echo __("Order's day") ?> +
                         <select name="dateRemiseColis_nbJour">
-                            <?php for ($i = 0; $i <= 30; $i++): ?>
+                            <?php for($i = 0; $i <= 30; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select> <?php echo __("day") ?>(s)
@@ -40,19 +32,19 @@ $_element = $block->getElement();
                     <td>
                         <?php echo __("day") ?>
                         <select name="dateRemiseColis_jour">
-                            <?php for ($i = 0; $i < count($jours); $i++): ?>
-                                <option value="<?php echo($i + 1) ?>"><?php echo $jours[$i] ?></option>
+                            <?php for($i = 0; $i < count($jours); $i++): ?>
+                                <option value="<?php echo ($i+1) ?>"><?php echo $jours[$i] ?></option>
                             <?php endfor; ?>
                         </select>
                         <?php echo __("Hour") ?>
                         <select name="dateRemiseColis_heures">';
-                            <?php for ($i = 0; $i <= 24; $i++): ?>
+                            <?php for($i = 0; $i <= 24; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select>
                         :
                         <select name="dateRemiseColis_minutes">
-                            <?php for ($i = 0; $i <= 59; $i++): ?>
+                            <?php for($i = 0; $i <= 59; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select>
@@ -68,7 +60,7 @@ $_element = $block->getElement();
             <label><?php echo __("Time slot closed") ?></label>
         </td>
         <td class="value">
-            <a href="javascript:;" id="add_creneau" class="add_creneau"><?php echo __("Add a time slot") ?></a>
+            <a href="javascript:;" id="add_creneaufrsh" class="add_creneau"><?php echo __("Add a time slot") ?></a>
         </td>
         <td></td>
     </tr>
@@ -80,10 +72,10 @@ $_element = $block->getElement();
         <td class="value" colspan="1">
             <table width="100%">
                 <tr>
-                    <?php for ($i = 1; $i <= 4; $i++): ?>
-                        <td width="25%">
-                            <?php echo __("Appointment") ?><?php echo $i ?>
-                        </td>
+                    <?php for($i = 1; $i <= 4; $i++): ?>
+                    <td width="25%">
+                        <?php echo __("Appointment") ?> <?php echo $i ?>
+                    </td>
                     <?php endfor; ?>
                 </tr>
             </table>
@@ -94,17 +86,17 @@ $_element = $block->getElement();
     <tr id="row_<?php echo $_element->getHtmlId() ?>_niveauTarifaire_status" class="rdv_config">
         <td class="label">
             <label>&nbsp;</label>
-        </td>
+            </td>
         <td class="value" colspan="1">
             <table width="100%">
                 <tr>
-                    <?php for ($i = 1; $i <= 4; $i++): ?>
-                        <td width="25%">
-                            <select name="N<?php echo $i ?>_status">
-                                <option value="1"><?php echo __("Open") ?></option>
-                                <option value="0"><?php echo __("Closed") ?></option>
-                            </select>
-                        </td>
+                    <?php for($i = 1; $i <= 4; $i++): ?>
+                    <td width="25%">
+                        <select name="N<?php echo $i ?>_status">
+                            <option value="1"><?php echo __("Open") ?></option>
+                            <option value="0"><?php echo __("Closed") ?></option>
+                        </select>
+                    </td>
                     <?php endfor; ?>
                 </tr>
             </table>
@@ -119,10 +111,9 @@ $_element = $block->getElement();
         <td class="value" colspan="1">
             <table width="100%">
                 <tr>
-                    <?php for ($i = 1; $i <= 4; $i++): ?>
+                    <?php for($i = 1; $i <= 4; $i++): ?>
                         <td width="25%">
-                            <input type="text" name="N<?php echo $i ?>_price"
-                                   value="<%- data.N<?php echo $i ?>_price %>" class="required-entry validate-number">
+                            <input type="text" name="N<?php echo $i ?>_price" value="<%- data.N<?php echo $i ?>_price %>" class="required-entry validate-number">
                         </td>
                     <?php endfor; ?>
                 </tr>
@@ -134,7 +125,7 @@ $_element = $block->getElement();
     <tr id="row_<?php echo $_element->getHtmlId() ?>_niveauTarifaire_show" class="rdv_config">
         <td class="label">
             <label><?php echo __("Show prices") ?></label>
-        </td>
+            </td>
         <td class="value">
             <select name="niveauTarifaire_show">
                 <option value="1"><?php echo __("Yes") ?></option>
@@ -159,45 +150,44 @@ $_element = $block->getElement();
                     <td>
                         <?php echo __("From") ?>
                         <select name="creneaux_debut_jour" class="creneaux_<%- data.indice %>">
-                            <?php for ($i = 0; $i < count($jours); $i++): ?>
-                                <option value="<?php echo($i + 1) ?>"><?php echo $jours[$i] ?></option>
+                            <?php for($i = 0; $i < count($jours); $i++): ?>
+                                <option value="<?php echo ($i+1) ?>"><?php echo $jours[$i] ?></option>
                             <?php endfor; ?>
                         </select>
                         <?php echo __("Hour") ?>
                         <select name="creneaux_debut_heures" class="creneaux_<%- data.indice %>">
-                            <?php for ($i = 0; $i <= 24; $i++): ?>
+                            <?php for($i = 0; $i <= 24; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select>
                         :
                         <select name="creneaux_debut_minutes" class="creneaux_<%- data.indice %>">
-                            <?php for ($i = 0; $i <= 59; $i++): ?>
+                            <?php for($i = 0; $i <= 59; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select>
                     </td>
                     <td rowspan="2" class="del_creneau_cell">
-                        <a href="javascript:" class="del_creneau"
-                           data-indicecreneaux="<%- data.indice %>"><span><?php echo __("Remove appointment") ?></span></a>
+                        <a href="javascript:" class="del_creneau" data-indicecreneaux="<%- data.indice %>"><span><?php echo __("Remove appointment") ?></span></a>
                     </td>
                 </tr>
                 <tr>
                     <td>
                         <?php echo __("To") ?>
                         <select name="creneaux_fin_jour" class="creneaux_<%- data.indice %>">
-                            <?php for ($i = 0; $i < count($jours); $i++): ?>
-                                <option value="<?php echo($i + 1) ?>"><?php echo $jours[$i] ?></option>
+                            <?php for($i = 0; $i < count($jours); $i++): ?>
+                                <option value="<?php echo ($i+1) ?>"><?php echo $jours[$i] ?></option>
                             <?php endfor; ?>
                         </select>
                         <?php echo __("Hour") ?>
                         <select name="creneaux_fin_heures" class="creneaux_<%- data.indice %>">
-                            <?php for ($i = 0; $i <= 24; $i++): ?>
+                            <?php for($i = 0; $i <= 24; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select>
                         :
                         <select name="creneaux_fin_minutes" class="creneaux_<%- data.indice %>">
-                            <?php for ($i = 0; $i <= 59; $i++): ?>
+                            <?php for($i = 0; $i <= 59; $i++): ?>
                                 <option value="<?php echo $i ?>"><?php echo $i ?></option>
                             <?php endfor; ?>
                         </select>
@@ -213,11 +203,11 @@ $_element = $block->getElement();
     require([
         'jquery',
         'mage/template'
-    ], function ($, mageTemplate) {
+    ], function($,mageTemplate){
 
         var indiceCreneaux = 0;
         var idField = "<?php echo $_element->getHtmlId() ?>";
-        var parentRow = $("#row_" + idField);
+        var parentRow = $("#row_"+idField);
 
         /* on masque la ligne avec le champ text. Celui-ci est géré en js (json) */
         parentRow.hide();
@@ -234,39 +224,39 @@ $_element = $block->getElement();
         parentRow.after(tmpl);
 
         /* préchargement des données */
-        if (elementValue) {
+        if(elementValue) {
 
             var selectedOption;
 
             /* date de remise colis */
             if (typeof elementValue.dateRemiseColis_nbJour != 'undefined') {
-                selectedOption = $('#row_' + idField + '_dateRemiseColis select[name="dateRemiseColis_nbJour"] option[value="' + elementValue.dateRemiseColis_nbJour + '"]');
-                if (selectedOption.length) {
-                    selectedOption.prop("selected", true);
+                selectedOption = $('#row_'+idField+'_dateRemiseColis select[name="dateRemiseColis_nbJour"] option[value="'+elementValue.dateRemiseColis_nbJour+'"]');
+                if(selectedOption.length) {
+                    selectedOption.prop("selected",true);
                 }
             }
             if (typeof elementValue.dateRemiseColis_jour != 'undefined') {
-                selectedOption = $('#row_' + idField + '_dateRemiseColis select[name="dateRemiseColis_jour"] option[value="' + elementValue.dateRemiseColis_jour + '"]');
-                if (selectedOption.length) {
-                    selectedOption.prop("selected", true);
+                selectedOption = $('#row_'+idField+'_dateRemiseColis select[name="dateRemiseColis_jour"] option[value="'+elementValue.dateRemiseColis_jour+'"]');
+                if(selectedOption.length) {
+                    selectedOption.prop("selected",true);
                 }
             }
             if (typeof elementValue.dateRemiseColis_heures != 'undefined') {
-                selectedOption = $('#row_' + idField + '_dateRemiseColis select[name="dateRemiseColis_heures"] option[value="' + elementValue.dateRemiseColis_heures + '"]');
-                if (selectedOption.length) {
-                    selectedOption.prop("selected", true);
+                selectedOption = $('#row_'+idField+'_dateRemiseColis select[name="dateRemiseColis_heures"] option[value="'+elementValue.dateRemiseColis_heures+'"]');
+                if(selectedOption.length) {
+                    selectedOption.prop("selected",true);
                 }
             }
             if (typeof elementValue.dateRemiseColis_minutes != 'undefined') {
-                selectedOption = $('#row_' + idField + '_dateRemiseColis select[name="dateRemiseColis_minutes"] option[value="' + elementValue.dateRemiseColis_minutes + '"]');
-                if (selectedOption.length) {
-                    selectedOption.prop("selected", true);
+                selectedOption = $('#row_'+idField+'_dateRemiseColis select[name="dateRemiseColis_minutes"] option[value="'+elementValue.dateRemiseColis_minutes+'"]');
+                if(selectedOption.length) {
+                    selectedOption.prop("selected",true);
                 }
             }
 
             /* creneaux */
-            if (elementValue['creneaux']) {
-                for (var key in elementValue['creneaux']) {
+            if(elementValue['creneaux']) {
+                for(var key in elementValue['creneaux']) {
                     indiceCreneaux = key;
                     var data = elementValue['creneaux'][key];
                     data['idField'] = idField;
@@ -276,18 +266,18 @@ $_element = $block->getElement();
             }
 
             /* Niveau tarifaire : preselection */
-            for (i = 1; i <= 4; i++) {
-                if (typeof elementValue['N' + i + '_status'] != 'undefined') {
-                    selectedOption = $('#row_' + idField + '_niveauTarifaire_status select[name="N' + i + '_status"] option[value="' + elementValue['N' + i + '_status'] + '"]');
-                    if (selectedOption.length) {
-                        selectedOption.prop("selected", true);
+            for(i = 1; i <= 4; i++) {
+                if (typeof elementValue['N'+i+'_status'] != 'undefined') {
+                    selectedOption = $('#row_'+idField+'_niveauTarifaire_status select[name="N'+i+'_status"] option[value="'+elementValue['N'+i+'_status']+'"]');
+                    if(selectedOption.length) {
+                        selectedOption.prop("selected",true);
                     }
                 }
             }
             if (typeof elementValue.niveauTarifaire_show != 'undefined') {
-                selectedOption = $('#row_' + idField + '_niveauTarifaire_show select[name="niveauTarifaire_show"] option[value="' + elementValue.niveauTarifaire_show + '"]');
-                if (selectedOption.length) {
-                    selectedOption.prop("selected", true);
+                selectedOption = $('#row_'+idField+'_niveauTarifaire_show select[name="niveauTarifaire_show"] option[value="'+elementValue.niveauTarifaire_show+'"]');
+                if(selectedOption.length) {
+                    selectedOption.prop("selected",true);
                 }
             }
         }
@@ -295,23 +285,25 @@ $_element = $block->getElement();
         /** EVENTS **/
 
         /* Add creneaux */
-        $('#add_creneau').click(function () {
+        $('#add_creneaufrsh').click(function(){
+						console.log(idField);
+			console.log(indiceCreneaux);
             addCreneaux({
-                idField: idField,
-                indice: indiceCreneaux
+                idField : idField,
+                indice : indiceCreneaux
             })
         });
 
         /* Delete creneaux */
-        $('body').on("click", ".del_creneau", function () {
+        $('body').on("click",".del_creneau",function(){
             removeCreneaux($(this).data("indicecreneaux"));
         });
 
         /* Update creneaux */
-        $('body').on("change", ".rdv_config select", function () {
+        $('body').on("change",".rdv_config select",function(){
             updateCreneaux($(this));
         });
-        $('body').on("blur", ".rdv_config input", function () {
+        $('body').on("blur",".rdv_config input",function(){
             updateCreneaux($(this));
         });
 
@@ -319,10 +311,10 @@ $_element = $block->getElement();
         function addCreneaux(data) {
 
             /* update object elementValue */
-            if (typeof elementValue['creneaux'] == 'undefined') {
+            if(typeof elementValue['creneaux'] == 'undefined') {
                 elementValue['creneaux'] = {};
             }
-            if (typeof elementValue['creneaux'][data.indice] == 'undefined') { /* nouveau creneaux : initilaisation */
+            if(typeof elementValue['creneaux'][data.indice] == 'undefined') { /* nouveau creneaux : initilaisation */
                 elementValue['creneaux'][data.indice] = {};
                 elementValue['creneaux'][data.indice]['creneaux_debut_jour'] = "1";
                 elementValue['creneaux'][data.indice]['creneaux_debut_heures'] = "0";
@@ -331,46 +323,46 @@ $_element = $block->getElement();
                 elementValue['creneaux'][data.indice]['creneaux_fin_heures'] = "0";
                 elementValue['creneaux'][data.indice]['creneaux_fin_minutes'] = "0";
             }
-            $("#" + idField).val(JSON.stringify(elementValue));
+            $("#"+idField).val(JSON.stringify(elementValue));
 
             /* Add row html */
             var templateCreneauxHtml = mageTemplate('#srdv_template_creneaux');
             var tmpl = templateCreneauxHtml({
                 data: data
             });
-            $('#row_' + idField + '_niveauTarifaire_labels').before(tmpl);
+            $('#row_'+idField+'_niveauTarifaire_labels').before(tmpl);
             indiceCreneaux++;
 
             /* preselection des dropdown */
-            if (typeof data['creneaux_debut_jour'] != "undefined") {
-                $('#row_' + data.idField + '_creneaux_' + data.indice).find('select[name=creneaux_debut_jour] option[value=' + data['creneaux_debut_jour'] + ']').prop("selected", true);
+            if(typeof data['creneaux_debut_jour'] != "undefined") {
+                $('#row_'+data.idField+'_creneaux_'+data.indice).find('select[name=creneaux_debut_jour] option[value='+data['creneaux_debut_jour']+']').prop("selected",true);
             }
-            if (typeof data['creneaux_debut_heures'] != "undefined") {
-                $('#row_' + data.idField + '_creneaux_' + data.indice).find('select[name=creneaux_debut_heures] option[value=' + data['creneaux_debut_heures'] + ']').prop("selected", true);
+            if(typeof data['creneaux_debut_heures'] != "undefined") {
+                $('#row_'+data.idField+'_creneaux_'+data.indice).find('select[name=creneaux_debut_heures] option[value='+data['creneaux_debut_heures']+']').prop("selected",true);
             }
-            if (typeof data['creneaux_debut_minutes'] != "undefined") {
-                $('#row_' + data.idField + '_creneaux_' + data.indice).find('select[name=creneaux_debut_minutes] option[value=' + data['creneaux_debut_minutes'] + ']').prop("selected", true);
+            if(typeof data['creneaux_debut_minutes'] != "undefined") {
+                $('#row_'+data.idField+'_creneaux_'+data.indice).find('select[name=creneaux_debut_minutes] option[value='+data['creneaux_debut_minutes']+']').prop("selected",true);
             }
-            if (typeof data['creneaux_fin_jour'] != "undefined") {
-                $('#row_' + data.idField + '_creneaux_' + data.indice).find('select[name=creneaux_fin_jour] option[value=' + data['creneaux_fin_jour'] + ']').prop("selected", true);
+            if(typeof data['creneaux_fin_jour'] != "undefined") {
+                $('#row_'+data.idField+'_creneaux_'+data.indice).find('select[name=creneaux_fin_jour] option[value='+data['creneaux_fin_jour']+']').prop("selected",true);
             }
-            if (typeof data['creneaux_fin_heures'] != "undefined") {
-                $('#row_' + data.idField + '_creneaux_' + data.indice).find('select[name=creneaux_fin_heures] option[value=' + data['creneaux_fin_heures'] + ']').prop("selected", true);
+            if(typeof data['creneaux_fin_heures'] != "undefined") {
+                $('#row_'+data.idField+'_creneaux_'+data.indice).find('select[name=creneaux_fin_heures] option[value='+data['creneaux_fin_heures']+']').prop("selected",true);
             }
-            if (typeof data['creneaux_fin_minutes'] != "undefined") {
-                $('#row_' + data.idField + '_creneaux_' + data.indice).find('select[name=creneaux_fin_minutes] option[value=' + data['creneaux_fin_minutes'] + ']').prop("selected", true);
+            if(typeof data['creneaux_fin_minutes'] != "undefined") {
+                $('#row_'+data.idField+'_creneaux_'+data.indice).find('select[name=creneaux_fin_minutes] option[value='+data['creneaux_fin_minutes']+']').prop("selected",true);
             }
 
         }
 
         /* Remove creneaux */
         function removeCreneaux(index) {
-            var rowCreneaux = $("#row_" + idField + "_creneaux_" + index);
-            if (rowCreneaux.length) {
+            var rowCreneaux = $("#row_"+idField+"_creneaux_"+index);
+            if(rowCreneaux.length) {
                 /* remove element in object */
-                if (typeof elementValue['creneaux'] != 'undefined' && typeof elementValue['creneaux'][index] != 'undefined') {
+                if(typeof elementValue['creneaux'] != 'undefined' && typeof elementValue['creneaux'][index] != 'undefined') {
                     delete elementValue['creneaux'][index];
-                    $("#" + idField).val(JSON.stringify(elementValue));
+                    $("#"+idField).val(JSON.stringify(elementValue));
                 }
 
                 /* remove row html */
@@ -381,17 +373,17 @@ $_element = $block->getElement();
         /* Update creneaux */
         function updateCreneaux(element) {
             var elementName = element.attr('name');
-            if (elementName.indexOf('creneaux') != -1) {
+            if(elementName.indexOf('creneaux') != -1) {
                 // get indice creneaux
-                var indice = element.attr('class').replace('creneaux_', '');
-                if (typeof elementValue['creneaux'] == 'undefined' || typeof elementValue['creneaux'][indice] == 'undefined') {
+                var indice = element.attr('class').replace('creneaux_','');
+                if(typeof elementValue['creneaux'] == 'undefined' || typeof elementValue['creneaux'][indice] == 'undefined') {
                     return;
                 }
                 elementValue['creneaux'][indice][elementName] = element.val();
             } else {
                 elementValue[elementName] = element.val();
             }
-            $("#" + idField).val(JSON.stringify(elementValue));
+            $("#"+idField).val(JSON.stringify(elementValue));
         }
     });
 </script>

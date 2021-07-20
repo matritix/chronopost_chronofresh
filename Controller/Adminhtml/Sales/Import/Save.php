@@ -1,17 +1,4 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
 
 namespace Chronopost\Chronorelais\Controller\Adminhtml\Sales\Import;
 
@@ -20,67 +7,60 @@ use Magento\Backend\App\Action\Context;
 use Chronopost\Chronorelais\Helper\Data as HelperData;
 use Chronopost\Chronorelais\Helper\Shipment as HelperShipment;
 
-use Magento\Framework\App\ResponseInterface;
-use Magento\Framework\Controller\Result\Redirect;
-use Magento\Framework\Controller\ResultInterface;
 use Magento\Framework\File\Csv;
 use Magento\Sales\Model\OrderFactory;
 use Magento\Framework\HTTP\PhpEnvironment\Request as RequestPhp;
 use \Magento\Framework\App\Config\Storage\WriterInterface;
 use \Magento\Sales\Model\Order\Shipment as OrderShipment;
 
-/**
- * Class Save
- *
- * @package Chronopost\Chronorelais\Controller\Adminhtml\Sales\Import
- */
 class Save extends \Magento\Backend\App\Action
 {
 
     /**
      * @var HelperData
      */
-    protected $helperData;
+    protected $_helperData;
 
     /**
      * @var HelperShipment
      */
-    protected $helperShipment;
+    protected $_helperShipment;
 
     /**
      * @var Csv
      */
-    protected $fileCsv;
+    protected $_fileCsv;
 
     /**
      * @var OrderFactory
      */
-    protected $orderFactory;
+    protected $_orderFactory;
 
     /**
      * @var RequestPhp
      */
-    protected $requestPhp;
+    protected $_requestPhp;
 
     /**
-     * @var WriterInterface
+     *  @var \Magento\Framework\App\Config\Storage\WriterInterface
      */
-    protected $configWriter;
+    protected $_configWriter;
+
 
     /**
-     * @var OrderShipment
+     * @var \Magento\Sales\Model\Order\Shipment
      */
-    protected $shipment;
+    protected $_shipment;
 
     /**
-     * @param Context         $context
-     * @param HelperShipment  $helperShipment
-     * @param HelperData      $helperData
-     * @param Csv             $csv
-     * @param OrderFactory    $orderFactory
-     * @param RequestPhp      $requestPhp
+     * @param Context        $context
+     * @param HelperShipment $helperShipment
+     * @param HelperData     $helperData
+     * @param Csv            $csv
+     * @param OrderFactory   $orderFactory
+     * @param RequestPhp     $requestPhp
      * @param WriterInterface $configWriter
-     * @param Shipment        $shipment
+     * @param Shipment $shipment
      */
     public function __construct(
         Context $context,
@@ -93,135 +73,112 @@ class Save extends \Magento\Backend\App\Action
         Shipment $shipment
     ) {
         parent::__construct($context);
-        $this->helperData = $helperData;
-        $this->helperShipment = $helperShipment;
-        $this->fileCsv = $csv;
-        $this->orderFactory = $orderFactory;
-        $this->requestPhp = $requestPhp;
-        $this->configWriter = $configWriter;
-        $this->shipment = $shipment;
+        $this->_helperData = $helperData;
+        $this->_helperShipment = $helperShipment;
+        $this->_fileCsv = $csv;
+        $this->_orderFactory = $orderFactory;
+        $this->_requestPhp = $requestPhp;
+        $this->_configWriter = $configWriter;
+        $this->_shipment = $shipment;
     }
 
     /**
-     * Save import action
-     *
-     * @return ResponseInterface|Redirect|ResultInterface
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+     * @return \Magento\Framework\Controller\Result\Redirect
      */
     public function execute()
     {
         $resultRedirect = $this->resultRedirectFactory->create();
 
         try {
-            $chronoFile = $this->requestPhp->getFiles('import_chronorelais_file');
-
+            $chronoFile = $this->_requestPhp->getFiles('import_chronorelais_file');
             if ($this->getRequest()->getParams() && $chronoFile && !empty($chronoFile['tmp_name'])) {
-                $trackingTitle = $this->requestPhp->getPost('import_chronorelais_tracking_title');
-                $numberColumnParcel = $this->requestPhp->getPost('import_chronorelais_column_parcel');
-                $numberColumnOrder = $this->requestPhp->getPost('import_chronorelais_column_order');
-
+                $trackingTitle = $this->_requestPhp->getPost('import_chronorelais_tracking_title');
+                $numberColumnParcel = $this->_requestPhp->getPost('import_chronorelais_column_parcel');
+                $numberColumnOrder = $this->_requestPhp->getPost('import_chronorelais_column_order');
                 if (!$trackingTitle) {
-                    throw new \Exception((string)__('Please enter a title for the tracking'));
+                    Throw new \Exception(__("Please enter a title for the tracking"));
                 }
-
-                if ($numberColumnParcel == null || $numberColumnParcel === '' || !is_numeric($numberColumnParcel)) {
-                    throw new \Exception((string)__('Please fill in a column number containing the package number.'));
+                if ($numberColumnParcel == null || $numberColumnParcel == "" || !is_numeric($numberColumnParcel)) {
+                    Throw new \Exception(__("Veuillez renseigner un numéro de colonne contenant le numéro du colis."));
                 }
-
-                if ($numberColumnOrder == null || $numberColumnOrder === '' || !is_numeric($numberColumnOrder)) {
-                    throw new \Exception(
-                        (string)__('Please fill in a column number containing the order number.')
-                    );
+                if ($numberColumnOrder == null || $numberColumnOrder == "" || !is_numeric($numberColumnOrder)) {
+                    Throw new \Exception(__("Veuillez renseigner un numéro de colonne contenant le numéro de commande."));
                 }
-
-                $this->configWriter->save('chronopost/import/number_column_parcel', $numberColumnParcel);
-                $this->configWriter->save('chronopost/import/number_column_order', $numberColumnOrder);
-
+                $this->_configWriter->save('chronopost/import/number_column_parcel', $numberColumnParcel);
+                $this->_configWriter->save('chronopost/import/number_column_order', $numberColumnOrder);
                 $numberColumnParcel--;
                 $numberColumnOrder--;
-
-                if ($this->importChronorelaisFile(
-                    $chronoFile['tmp_name'],
-                    $trackingTitle,
-                    $numberColumnParcel,
-                    $numberColumnOrder
-                )) {
-                    $this->messageManager->addSuccessMessage(__('The parcels have been imported'));
+                if($this->_importChronorelaisFile($chronoFile['tmp_name'], $trackingTitle, $numberColumnParcel, $numberColumnOrder)) {
+                    $this->messageManager->addSuccessMessage(__("The parcels have been imported"));
                 }
             } else {
-                throw new \Exception((string)__('Please select a file'));
+                Throw new \Exception(__("Please select a file"));
             }
-        } catch (\Exception $exception) {
-            $this->messageManager->addErrorMessage(__($exception->getMessage()));
+
+        } catch (\Exception $e) {
+            $this->messageManager->addErrorMessage(__($e->getMessage()));
         }
 
-        $resultRedirect->setPath('chronorelais/sales/import');
+        $resultRedirect->setPath("chronopost_chronorelais/sales/import");
 
         return $resultRedirect;
     }
 
     /**
-     * Import file
-     *
-     * @param string $fileName
-     * @param string $trackingTitle
-     * @param string $numberColumnParcel
-     * @param string $numberColumnOrder
-     *
-     * @return bool
-     * @throws \Exception
-     * @SuppressWarnings("Unused")
+     * @param $fileName
+     * @param $trackingTitle
      */
-    protected function importChronorelaisFile($fileName, $trackingTitle, $numberColumnParcel, $numberColumnOrder)
+    protected function _importChronorelaisFile($fileName, $trackingTitle, $numberColumnParcel, $numberColumnOrder)
     {
         /**
          * File handling
          **/
-        ini_set('auto_detect_line_endings', '1');
-        $csvData = $this->fileCsv->setDelimiter(';')->getData($fileName);
+        ini_set('auto_detect_line_endings', true);
+        $csvData = $this->_fileCsv->setDelimiter(';')->getData($fileName);
 
         /**
          * Get configuration
          */
-        $sendEmail = $this->helperData->getConfig('chronorelais/import/send_mail');
-        $comment = $this->helperData->getConfig('chronorelais/import/shipping_comment');
-        $includeComment = $this->helperData->getConfig('chronorelais/import/include_comment');
+        $sendEmail = $this->_helperData->getConfig("chronorelais/import/send_mail");
+        $comment = $this->_helperData->getConfig("chronorelais/import/shipping_comment");
+        $includeComment = $this->_helperData->getConfig("chronorelais/import/include_comment");
 
         /**
          * $k is line number
          * $v is line content array
          */
-        foreach ($csvData as $key => $data) {
+        foreach ($csvData as $k => $v) {
+
             /**
              * Check if current line is header or contains non-numerical value
              */
-            if (!is_numeric($data[$numberColumnOrder])) {
+            if (!is_numeric($v[$numberColumnOrder])) {
                 continue;
             }
 
             /**
              * End of file has more than one empty lines
              */
-            if (count($data) <= 1 && !strlen($data[0])) {
+            if (count($v) <= 1 && !strlen($v[0])) {
                 continue;
             }
 
             /**
              * Get fields content
              */
-            if (!isset($data[$numberColumnOrder]) || !isset($data[$numberColumnParcel])) {
+            if(!isset($v[$numberColumnOrder]) || !isset($v[$numberColumnParcel])){
                 continue;
             }
 
-            $orderId = $data[$numberColumnOrder];
-            $trackingNumbers = $data[$numberColumnParcel];
+            $orderId = $v[$numberColumnOrder];
+            $trackingNumbers = $v[$numberColumnParcel];
 
             /**
              * Try to load the order
              */
-            $order = $this->orderFactory->create()->loadByIncrementId($orderId);
+            $order = $this->_orderFactory->create()->loadByIncrementId($orderId);
             if (!$order->getId()) {
-                $this->messageManager->addErrorMessage(__('The order %1 does not exist', $orderId));
+                $this->messageManager->addErrorMessage(__("The order %1 does not exist", $orderId));
                 continue;
             }
 
@@ -229,71 +186,60 @@ class Save extends \Magento\Backend\App\Action
              * Try to create a shipment
              */
             try {
-                $shippingMethod = explode('_', $order->getShippingMethod());
-                $shippingMethod = isset($shippingMethod[1]) ? $shippingMethod[1] : $shippingMethod[0];
+                $_shippingMethod = explode("_", $order->getShippingMethod());
 
-                $popup = 0;
-                $carrierCode = 'custom';
-                if (!$this->helperData->isChronoMethod($shippingMethod)) {
-                    $carrierCode = $shippingMethod;
+                if (!$this->_helperData->isChronoMethod($_shippingMethod[1])) { /* methode chronopost */
+                    $carrier_code = $_shippingMethod[1];
                     $popup = 1;
+                } else {
+                    $carrier_code = 'custom';
+                    $popup = 0;
                 }
 
                 $shipmentCreated = false;
-                if ($trackingNumbers) {
-                    $trackingNumbers = explode(',', trim($trackingNumbers, '[]'));
-                    foreach ($trackingNumbers as $trackingNumber) {
-                        $shipmentsCollection = $order->getShipmentsCollection();
-                        $trackingNumber = trim($trackingNumber);
-                        $trackData = [
-                            'track_number'    => $trackingNumber,
-                            'carrier'         => ucwords($carrierCode),
-                            'carrier_code'    => $carrierCode,
-                            'title'           => $trackingTitle,
-                            'popup'           => $popup,
-                            'send_mail'       => $sendEmail,
-                            'comment'         => $comment,
-                            'include_comment' => $includeComment
-                        ];
-
-                        if ($shipmentCreated || count($shipmentsCollection) > 0) {
-                            if (!$shipmentCreated) {
-                                $this->shipment = $shipmentsCollection->getFirstItem();
-                            }
-
-                            $this->helperShipment->createTrackToShipment($this->shipment, $trackData);
-                        } else {
-                            $this->shipment = $this->helperShipment->createNewShipment(
-                                $order,
-                                [],
-                                $trackData,
-                                [],
-                                1,
-                                true
-                            );
-                            $shipmentCreated = true;
+                $trackingNumbers = explode(',', trim($trackingNumbers, '[]'));
+                foreach ($trackingNumbers as $trackingNumber) {
+                    $_shipmentsCollection = $order->getShipmentsCollection();
+                    $trackingNumber = trim($trackingNumber);
+                    $trackData = array(
+                        'track_number'    => $trackingNumber,
+                        'carrier'         => ucwords($carrier_code),
+                        'carrier_code'    => $carrier_code,
+                        'title'           => $trackingTitle,
+                        'popup'           => $popup,
+                        'send_mail'       => $sendEmail,
+                        'comment'         => $comment,
+                        'include_comment' => $includeComment
+                    );
+                    if($shipmentCreated || count($_shipmentsCollection) > 0) {
+                        if(!$shipmentCreated) {
+                            $this->_shipment = $_shipmentsCollection->getFirstItem();
                         }
-
-                        $this->messageManager->addSuccessMessage(
-                            __('The shipment with the number %1 has been created for order %2', $trackingNumber, $orderId)
-                        );
+                        $this->_helperShipment->createTrackToShipment($this->_shipment, $trackData, null, 1, null);
+                    } else {
+                        $this->_shipment = $this->_helperShipment->createNewShipment($order, array(), $trackData, null, 1, true);
+                        $shipmentCreated = true;
                     }
+
+                    $this->messageManager->addSuccessMessage(__("The shipment with the number %1 has been created for order %2",
+                        $trackingNumber, $orderId));
                 }
-            } catch (\Exception $exception) {
-                $this->messageManager->addErrorMessage($exception->getMessage());
+
+            } catch (\Exception $e) {
+                $this->messageManager->addErrorMessage($e->getMessage());
             }
-        }
+
+        }//foreach
 
         return $this->messageManager->getMessages()->getCount() == 0;
     }
 
     /**
-     * Check is the current user is allowed to access this section
-     *
      * @return bool
      */
     protected function _isAllowed()
     {
         return $this->_authorization->isAllowed('Chronopost_Chronorelais::sales');
     }
+
 }

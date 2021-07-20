@@ -1,37 +1,15 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Controller\Adminhtml\Sales\Impression;
+
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\View\Result\PageFactory;
+use \Magento\Framework\App\Filesystem\DirectoryList;
+
+use Magento\Sales\Model\OrderFactory as OrderFactory;
 
 use Chronopost\Chronorelais\Helper\Data as HelperData;
 use Chronopost\Chronorelais\Helper\Shipment as HelperShipment;
-use Chronopost\Chronorelais\Lib\PDFMerger\PDFMerger;
-use Magento\Backend\App\Action\Context;
-use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\App\ResponseInterface;
-use Magento\Framework\Controller\Result\Redirect;
-use Magento\Framework\Controller\ResultInterface;
-use Magento\Framework\Message\ManagerInterface;
-use Magento\Framework\View\Result\PageFactory;
-use Magento\Sales\Model\OrderFactory as OrderFactory;
 
-/**
- * Class PrintEtiquette
- *
- * @package Chronopost\Chronorelais\Controller\Adminhtml\Sales\Impression
- */
 class PrintEtiquette extends AbstractImpression
 {
 
@@ -43,24 +21,21 @@ class PrintEtiquette extends AbstractImpression
     /**
      * @var OrderFactory
      */
-    protected $orderFactory;
+    protected $_orderFactory;
 
     /**
      * @var HelperShipment
      */
-    protected $helperShipment;
+    protected $_helperShipment;
 
     /**
      * PrintEtiquette constructor.
-     *
-     * @param Context          $context
-     * @param DirectoryList    $directoryList
-     * @param PageFactory      $resultPageFactory
-     * @param OrderFactory     $orderFactory
-     * @param HelperData       $helperData
-     * @param HelperShipment   $helperShipment
-     * @param PDFMerger        $PDFMerger
-     * @param ManagerInterface $messageManager
+     * @param Context $context
+     * @param DirectoryList $directoryList
+     * @param PageFactory $resultPageFactory
+     * @param OrderFactory $orderFactory
+     * @param HelperData $helperData
+     * @param HelperShipment $helperShipment
      */
     public function __construct(
         Context $context,
@@ -68,40 +43,54 @@ class PrintEtiquette extends AbstractImpression
         PageFactory $resultPageFactory,
         OrderFactory $orderFactory,
         HelperData $helperData,
-        HelperShipment $helperShipment,
-        PDFMerger $PDFMerger,
-        ManagerInterface $messageManager
+        HelperShipment $helperShipment
     ) {
-        parent::__construct($context, $directoryList, $resultPageFactory, $helperData, $PDFMerger, $messageManager);
-        $this->helperShipment = $helperShipment;
-        $this->orderFactory = $orderFactory;
+        parent::__construct($context,$directoryList,$resultPageFactory,$helperData);
+        $this->_helperShipment = $helperShipment;
+        $this->_orderFactory = $orderFactory;
     }
 
     /**
-     * Print label
-     *
-     * @return ResponseInterface|Redirect|ResultInterface
+     * @return \Magento\Framework\Controller\Result\Redirect
      */
     public function execute()
     {
-        $type = $this->getRequest()->getParam('type');
-        $shipmentId = $this->getRequest()->getParam('shipment_id');
-        $trackNumber = $this->getRequest()->getParam('track_number');
+        $resultRedirect = $this->resultRedirectFactory->create();
+        $orderId = $this->getRequest()->getParam('order_id');
 
+        $etiquetteUrl = array();
         try {
-            $labelUrl = $this->helperShipment->getEtiquetteUrl($shipmentId, $trackNumber, $type);
-            if (count($labelUrl) === 1) {
-                $this->prepareDownloadResponse('Etiquette_chronopost.pdf', $labelUrl[0]);
-            } elseif (count($labelUrl) > 1) {
-                $this->_processDownloadMass($labelUrl);
+            if(!$orderId) { /* expedition existante */
+                $shipmentId = $this->getRequest()->getParam('shipment_id');
+                $trackNumber = $this->getRequest()->getParam('track_number');
+                if ($shipmentId && null === $trackNumber) {
+                    $etiquetteUrl = $this->_helperShipment->getEtiquetteUrl($shipmentId);
+                } else if($trackNumber &&  null === $shipmentId) {
+
+                    $etiquetteUrl = $this->_helperShipment->getEtiquetteUrl($shipmentId, null, $trackNumber);
+
+                }
             }
-        } catch (\Exception $exception) {
-            $this->messageManager->addErrorMessage(__($exception->getMessage()));
 
-            $resultRedirect = $this->resultRedirectFactory->create();
-            $resultRedirect->setPath('chronorelais/sales/impression');
+            if(count($etiquetteUrl)) {
+                if(count($etiquetteUrl) === 1) {
+                    $this->prepareDownloadResponse('Etiquette_chronopost.pdf',  $etiquetteUrl[0]);
+                } else { /* plusieurs etiquettes générées */
+                    if($this->gsIsActive()) {
+                        $this->_processDownloadMass($etiquetteUrl);
+                    } else {
+                        $this->messageManager->addNoticeMessage(__("This order contains several shipments, click the link to obtain the labels"));
+                        $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
+                        return $resultRedirect;
+                    }
+                }
+            }
 
+        } catch(\Exception $e) {
+            $this->messageManager->addErrorMessage(__($e->getMessage()));
+            $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
             return $resultRedirect;
         }
     }
+
 }

@@ -11,13 +11,6 @@ var config = {
             weightAndDimensions : "Chronopost_Chronorelais/js/weightAndDimensions"
         }
     },
-    config: {
-        mixins: {
-            'Magento_Ui/js/grid/massactions': {
-                'Chronopost_Chronorelais/js/massactionsCustom': true
-            }
-        }
-    },
     shim: {
         "Chronopost_Chronorelais/js/initLinkRetour": ["jquery"],
         "Chronopost_Chronorelais/js/slick": ["jquery"],

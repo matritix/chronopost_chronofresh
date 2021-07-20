@@ -1,25 +1,6 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Model\Carrier;
 
-/**
- * Class Chronorelais
- *
- * @package Chronopost\Chronorelais\Model\Carrier
- */
 class Chronorelais extends AbstractChronopost
 {
     /**
@@ -27,9 +8,13 @@ class Chronorelais extends AbstractChronopost
      */
     protected $_code = 'chronorelais';
 
-    const PRODUCT_CODE = '86';
+    // const PRODUCT_CODE = '86';
+	const PRODUCT_CODE = '2R';
     const CARRIER_CODE = 'chronorelais';
     const PRODUCT_CODE_STR = 'PR';
+
     const CHECK_RELAI_WS = true;
+
+    /* autoriser la livraison le samedi */
     const DELIVER_ON_SATURDAY = true;
 }

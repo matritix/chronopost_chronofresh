@@ -1,56 +1,34 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Controller\Ajax;
 
-use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
-use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Chronopost\Chronorelais\Helper\Webservice as HelperWebservice;
 
-/**
- * Class SetSessionRdv
- *
- * @package Chronopost\Chronorelais\Controller\Ajax
- */
-class SetSessionRdv extends Action
+class setSessionRdv extends \Magento\Framework\App\Action\Action
 {
 
     /**
      * @var JsonFactory
      */
-    protected $resultJsonFactory;
+    protected $_resultJsonFactory;
 
     /**
      * @var CheckoutSession
      */
-    protected $checkoutSession;
+    protected $_checkoutSession;
 
     /**
      * @var HelperWebservice
      */
-    protected $helperWebservice;
+    protected $_helperWebservice;
 
     /**
-     * SetSessionRdv constructor.
-     *
-     * @param Context          $context
-     * @param JsonFactory      $jsonFactory
-     * @param CheckoutSession  $checkoutSession
+     * setSessionRdv constructor.
+     * @param Context $context
+     * @param JsonFactory $jsonFactory
+     * @param CheckoutSession $checkoutSession
      * @param HelperWebservice $webservice
      */
     public function __construct(
@@ -58,61 +36,58 @@ class SetSessionRdv extends Action
         JsonFactory $jsonFactory,
         CheckoutSession $checkoutSession,
         HelperWebservice $webservice
-    ) {
+    )
+    {
         parent::__construct($context);
-        $this->resultJsonFactory = $jsonFactory;
-        $this->checkoutSession = $checkoutSession;
-        $this->helperWebservice = $webservice;
+        $this->_resultJsonFactory = $jsonFactory;
+        $this->_checkoutSession = $checkoutSession;
+        $this->_helperWebservice = $webservice;
     }
 
     /**
-     * Execute action
-     *
-     * @return Json
+     * Reset le point relais en session
+     * @return \Magento\Framework\Controller\Result\Json
      */
     public function execute()
     {
-        $chronopostsrdvSlotsInfo = $this->getRequest()->getParam('chronopostsrdv_creneaux_info');
-
+        /* set session rdv */
+        $chronopostsrdv_creneaux_info = $this->getRequest()->getParam('chronopostsrdv_creneaux_info');
+		//added fresh
+		$methodCode = $this->getRequest()->getParam('method_code');
+		//end fresh
+		// var_dump($chronopostsrdv_creneaux_info);
         try {
-            $confirm = $this->helperWebservice->confirmDeliverySlot($chronopostsrdvSlotsInfo);
-            if ($confirm->return->code === 0) {
-                $this->checkoutSession->setData(
-                    "chronopostsrdv_creneaux_info",
-                    json_encode($chronopostsrdvSlotsInfo)
-                );
+            $confirm = $this->_helperWebservice->confirmDeliverySlot($chronopostsrdv_creneaux_info, $methodCode);
+            if($confirm->return->code == 0) {
+                $this->_checkoutSession->setData("chronopostsrdv_creneaux_info",json_encode($chronopostsrdv_creneaux_info));
 
-                $dateRdv = new \DateTime($chronopostsrdvSlotsInfo['deliveryDate']);
+                $dateRdv = new \DateTime($chronopostsrdv_creneaux_info['deliveryDate']);
                 $dateRdv = $dateRdv->format("d/m/Y");
 
-                $heureDebut = $chronopostsrdvSlotsInfo['startHour'] . ":" . str_pad(
-                        $chronopostsrdvSlotsInfo['startMinutes'],
-                        2,
-                        '0',
-                        STR_PAD_LEFT
-                    );
-
-                $heureFin = $chronopostsrdvSlotsInfo['endHour'] . ":" . str_pad(
-                        $chronopostsrdvSlotsInfo['endMinutes'],
-                        2,
-                        '0',
-                        STR_PAD_LEFT
-                    );
-
-                $data = [
+                $heureDebut = $chronopostsrdv_creneaux_info['startHour'].":".str_pad($chronopostsrdv_creneaux_info['startMinutes'],2,'0',STR_PAD_LEFT);
+                $heureFin = $chronopostsrdv_creneaux_info['endHour'].":".str_pad($chronopostsrdv_creneaux_info['endMinutes'],2,'0',STR_PAD_LEFT);
+				if($methodCode == 'chronofreshsrdv' || $methodCode == 'chronopostsrdv'){
+                $data = array(
                     "success" => true,
-                    "rdvInfo" => " - " . __("On %1 between %2 and %3", $dateRdv, $heureDebut, $heureFin)
-                ];
+                    "rdvInfo" => " ".__("On %1 between %2 and %3",$dateRdv,$heureDebut,$heureFin)
+                );
+				}
+				else{
+					$data = array(
+						"success" => true,
+						"rdvInfo" => " ".__("Le %1",$dateRdv)
+					);					
+				}
             } else {
-                $data = ["error" => true, "message" => __($confirm->return->message)];
+                $data = array("error" => true,"message" => __($confirm->return->message));
             }
-        } catch (\Exception $e) {
-            $data = ["error" => true, "message" => __($e->getMessage())];
+        } catch(\Exception $e) {
+            $data = array("error" => true,"message" => __($e->getMessage()));
         }
 
-        $result = $this->resultJsonFactory->create();
-        $result->setData($data);
 
+        $result = $this->_resultJsonFactory->create();
+        $result->setData($data);
         return $result;
     }
 }

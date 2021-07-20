@@ -1,150 +1,95 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Helper;
 
-use Chronopost\Chronorelais\Model\HistoryLtFactory;
-use Magento\Framework\App\Helper\AbstractHelper;
-use Magento\Framework\App\Helper\Context;
-use Magento\Framework\DB\Adapter\AdapterInterface;
-use Magento\Framework\Exception\LocalizedException;
-use Magento\Framework\Exception\MailException;
-use Magento\Sales\Model\Convert\Order as ConvertOrder;
-use Magento\Sales\Model\Order;
-use Magento\Sales\Model\Order\Shipment as OrderShipment;
 use Magento\Sales\Model\Order\Shipment\TrackFactory;
-use Magento\Shipping\Model\ShipmentNotifier;
-use Magento\Framework\App\ResourceConnection;
+
+use \Magento\Sales\Model\Convert\Order as ConvertOrder;
+use \Magento\Shipping\Model\ShipmentNotifier;
+use \Magento\Sales\Model\Order\Shipment as OrderShipment;
+use \Chronopost\Chronorelais\Model\HistoryLtFactory;
 
 /**
+ * gestion des expeditions
  * Class Shipment
- *
  * @package Chronopost\Chronorelais\Helper
  */
-class Shipment extends AbstractHelper
+class Shipment extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    const HISTORY_TYPE_SHIPMENT = 1;
-    const HISTORY_TYPE_RETURN = 2;
-
     /**
      * @var TrackFactory
      */
-    protected $trackFactory;
+    protected $_trackFactory;
 
     /**
      * @var ConvertOrder
      */
-    protected $convertOrder;
+    protected $_convertOrder;
 
     /**
      * @var ShipmentNotifier
      */
-    protected $shipmentNotifier;
+    protected $_shipmentNotifier;
 
     /**
      * @var Webservice
      */
-    protected $helperWebserviceNotifier;
+    protected $_helperWebservice;
 
     /**
      * @var OrderShipment
      */
-    protected $shipment;
+    protected $_shipment;
+
 
     /**
      * @var HistoryLtFactory
      */
-    protected $ltHistoryFactory;
-
-    /**
-     * @var ResourceConnection
-     */
-    private $resource;
-
-    /**
-     * @var null|AdapterInterface
-     */
-    private $connection = null;
+    protected $_ltHistoryFactory;
 
     /**
      * Shipment constructor.
-     *
-     * @param Context          $context
-     * @param TrackFactory     $trackFactory
-     * @param ConvertOrder     $convertOrder
+     * @param \Magento\Framework\App\Helper\Context $context
+     * @param TrackFactory $trackFactory
+     * @param ConvertOrder $convertOrder
      * @param ShipmentNotifier $shipmentNotifier
-     * @param Webservice       $webservice
-     * @param OrderShipment    $shipment
-     * @param HistoryLtFactory $historyLtFactory
      */
     public function __construct(
-        Context $context,
+        \Magento\Framework\App\Helper\Context $context,
         TrackFactory $trackFactory,
         ConvertOrder $convertOrder,
         ShipmentNotifier $shipmentNotifier,
         Webservice $webservice,
         OrderShipment $shipment,
-        HistoryLtFactory $historyLtFactory,
-        ResourceConnection $resource
+        HistoryLtFactory $historyLtFactory
     ) {
         parent::__construct($context);
-        $this->trackFactory = $trackFactory;
-        $this->convertOrder = $convertOrder;
-        $this->shipmentNotifier = $shipmentNotifier;
-        $this->helperWebserviceNotifier = $webservice;
-        $this->shipment = $shipment;
-        $this->ltHistoryFactory = $historyLtFactory;
-        $this->resource = $resource;
+        $this->_trackFactory = $trackFactory;
+
+        $this->_convertOrder = $convertOrder;
+        $this->_shipmentNotifier = $shipmentNotifier;
+        $this->_helperWebservice = $webservice;
+        $this->_shipment = $shipment;
+        $this->_ltHistoryFactory = $historyLtFactory;
     }
 
     /**
-     * Create shipment and labels
-     *
-     * @param Order $order
+     * Creation expedition + etiquette
+     * @param \Magento\Sales\Model\Order $order
      * @param array $savedQtys
      * @param array $trackData
-     * @param null  $dimensions
-     * @param int   $packageNumber
-     * @param bool  $isImport
-     * @param null  $contractId
-     *
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
-     *
      * @return bool|mixed|string
-     * @throws LocalizedException
-     * @throws MailException
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
-    public function createNewShipment(
-        Order $order,
-        $savedQtys = [],
-        $trackData = [],
-        $dimensions = [],
-        $packageNumber = 1,
-        $isImport = false,
-        $contractId = null
-    ) {
+    public function createNewShipment(\Magento\Sales\Model\Order $order,$savedQtys = array(), $trackData = array(), $dimensions = null, $nb_colis = 1, $isImport = false) {
         if (!$order->canShip() && !$isImport) {
-            throw new LocalizedException(
+            throw new \Magento\Framework\Exception\LocalizedException(
                 __("You can't create a shipment.")
             );
         }
+        $shipment = $this->_convertOrder->toShipment($order);
+        foreach ($order->getAllItems() AS $orderItem) {
 
-        $shipment = $this->convertOrder->toShipment($order);
-        foreach ($order->getAllItems() as $orderItem) {
-            if (!$orderItem->getQtyToShip() || $orderItem->getIsVirtual()) {
+            if (! $orderItem->getQtyToShip() || $orderItem->getIsVirtual()) {
                 continue;
             }
 
@@ -156,310 +101,183 @@ class Shipment extends AbstractHelper
                 continue;
             }
 
-            $shipmentItem = $this->convertOrder->itemToShipmentItem($orderItem)->setQty($qtyShipped);
+            $shipmentItem = $this->_convertOrder->itemToShipmentItem($orderItem)->setQty($qtyShipped);
             $shipment->addItem($shipmentItem);
         }
 
-        $shipment->setData('dimensions', $dimensions);
-        $shipment->setData('nb_colis', $packageNumber);
-        $shipment->setData('contract_id', $contractId);
-
-        // Case of import tracking via the BO
+        /* cas d'import de tracking via le BO */
         $shipment->setTrackData($trackData);
 
         $shipment->register();
         $shipment->getOrder()->setIsInProcess(true);
 
-        if ($shipment->getExtensionAttributes() !== null && !empty($shipment->getExtensionAttributes())) {
+        if ($shipment->getExtensionAttributes() !== null && !empty($shipment->getExtensionAttributes())){
             $shipment->getExtensionAttributes()->setSourceCode('default');
         }
 
-        $shipment->setData('create_track_toshipment', true);
-
-        if ((!isset($trackData['send_mail']) || (isset($trackData['send_mail']) && $trackData['send_mail']))) {
-            if (isset($trackData['comment'])) {
-                $shipment->addComment($trackData['comment'], true, $trackData['include_comment']);
-            }
-
-            $this->shipmentNotifier->notify($shipment);
-            $shipment->setData('create_track_toshipment', false);
-        }
-
-        $shipment->save();
+        $shipment->setData('create_track_to_shipment',true)->save();
         $shipment->getOrder()->save();
+
+
+        if((!isset($trackData['send_mail']) || (isset($trackData['send_mail']) && $trackData['send_mail']))) {
+            if(isset($trackData['comment'])) {
+                $shipment->addComment($trackData['comment'],true, $trackData['include_comment']);
+            }
+            $this->_shipmentNotifier->notify($shipment);
+
+            $shipment->setData('create_track_to_shipment',false)->save();
+            $shipment->getOrder()->save();
+
+        }
 
         return $shipment;
     }
 
     /**
-     * Create track to shipment
-     *
      * @param OrderShipment $shipment
-     * @param array         $trackData
-     * @param array         $dimensions
-     * @param int           $packageNumber
-     * @param null          $contractId
-     * @param null          $customeAdValorem
-     *
-     * @return array
-     * @throws \Exception
+     * @param array $trackData
+     * @return bool
      */
-    public function createTrackToShipment(
-        OrderShipment $shipment,
-        $trackData = [],
-        $dimensions = [],
-        $packageNumber = 1,
-        $contractId = null,
-        $customeAdValorem = null
-    ) {
-        $trackDatas = [];
-        $resultParcelValues = [];
-
+    public function createTrackToShipment(\Magento\Sales\Model\Order\Shipment $shipment, $trackData = array(), $dimensions = null, $nb_colis = 1, $contractId = null) {
         $order = $shipment->getOrder();
-        $shippingMethod = explode('_', $order->getShippingMethod());
+        $_shippingMethod = explode("_", $order->getShippingMethod());
 
-        if (count($trackData) > 0) {
-            $trackData = array_merge($trackData, [
-                'parent_id' => $shipment->getId(),
-                'order_id'  => $order->getId()
-            ]);
+            $expedition = false;
+            $trackDatas = array();
+            $resultParcelValues = array();
 
-            $trackDatas[] = $trackData;
-        } else {
-            if ($contractId === null) {
-                $contractId = $shipment->getData('contract_id');
-            }
-
-            $expedition = $this->helperWebserviceNotifier->createEtiquette(
-                $shipment,
-                'shipping',
-                'returninformation',
-                $dimensions,
-                $packageNumber,
-                $contractId,
-                $customeAdValorem
-            );
-
-            if (is_object($expedition->return->resultParcelValue)) {
-                array_push($resultParcelValues, $expedition->return->resultParcelValue);
+            if(count($trackData) > 0) {
+                $trackData = array_merge($trackData,array(
+                    'parent_id' => $shipment->getId(),
+                    'order_id' => $order->getId()
+                ));
+                $trackDatas[] = $trackData;
             } else {
-                $resultParcelValues = $expedition->return->resultParcelValue;
-            }
+                $expedition = $this->_helperWebservice->createEtiquette($shipment, 'expedition', 'returninformation', $dimensions, $nb_colis, $contractId);
 
-            for ($ite = 0; $ite < count($resultParcelValues); $ite++) {
-                $trackData = [
-                    'track_number'              => $resultParcelValues[$ite]->skybillNumber,
-                    'parent_id'                 => $shipment->getId(),
-                    'order_id'                  => $order->getId(),
-                    'chrono_reservation_number' => $expedition->return->reservationNumber,
-                    'carrier'                   => ucwords($shippingMethod[1]),
-                    'carrier_code'              => $shippingMethod[1],
-                    'title'                     => ucwords($shippingMethod[1]),
-                    'popup'                     => '1'
-                ];
+                if(is_object($expedition->return->resultParcelValue)){
+                    array_push($resultParcelValues,$expedition->return->resultParcelValue);
+                }
+                else{
+                    $resultParcelValues = $expedition->return->resultParcelValue;
+                }
+                
+                for($i = 0; $i<count($resultParcelValues) ; $i++){
+                    $trackData = array(
+                        'track_number' => $resultParcelValues[$i]->skybillNumber,
+                        'parent_id' => $shipment->getId(),
+                        'order_id' => $order->getId(),
+                        'chrono_reservation_number' => $expedition->return->reservationNumber,
+                        'carrier' => ucwords($_shippingMethod[1]),
+                        'carrier_code' => $_shippingMethod[1],
+                        'title' => ucwords($_shippingMethod[1]),
+                        'popup' => '1'
+                    );
 
-                if (!isset($dimensions[$ite])) {
-                    $dimensions[$ite] = $dimensions['weight'];
+                    if(!isset($dimensions[$i])) {
+                        $dimensions[$i] = $dimensions["weight"];
+                    }
+
+                   $this->saveLtHistory($shipment->getId(), $resultParcelValues[$i]->skybillNumber, $dimensions[$i]["weight"]);
+
+                    $trackDatas[] = $trackData;
                 }
 
-                $this->saveLtHistory(
-                    $shipment->getId(),
-                    $resultParcelValues[$ite]->skybillNumber,
-                    $dimensions[$ite]['weight'],
-                    $expedition->return->reservationNumber
-                );
-
-                $trackDatas[] = $trackData;
             }
-        }
 
         try {
-            foreach ($trackDatas as $trackData) {
-                $track = $this->trackFactory->create();
-                $track->addData($trackData);
-                $shipment->addTrack($track)->setData('create_track_toshipment', false)->save();
-            }
-        } catch (\Exception $exception) {
-            $this->_logger->error($exception->getMessage());
-        }
+            foreach ($trackDatas as $trackData){
 
-        return $trackDatas;
+                $track = $this->_trackFactory->create();
+                $track->addData($trackData);
+                $shipment->addTrack($track)->setData('create_track_to_shipment', false)->save();
+            }
+
+            return true;
+        } catch(\Exception $e) {
+                var_dump($e->getMessage());
+        }
+        return false;
     }
 
-    /**
-     * Save history
-     *
-     * @param string $shipmentId
-     * @param string $ltNumber
-     * @param float  $weight
-     * @param null   $reservation
-     * @param null   $type HISTORY_TYPE_SHIPMENT or HISTORY_TYPE_RETURN
-     *
-     * @throws \Exception
-     */
-    public function saveLtHistory($shipmentId, $ltNumber, $weight, $reservation = null, $type = null)
-    {
-        if (!$type) {
-            $type = static::HISTORY_TYPE_SHIPMENT;
-        }
-
-        $ltHistory = $this->ltHistoryFactory->create();
+    protected function saveLtHistory($shipmentId, $ltNumber, $weight) {
+        $ltHistory = $this->_ltHistoryFactory->create();
         $ltHistory->setData('shipment_id', $shipmentId);
         $ltHistory->setData('lt_number', $ltNumber);
         $ltHistory->setData('weight', $weight);
-        $ltHistory->setData('reservation', $reservation);
-        $ltHistory->setData('type', $type);
         $ltHistory->save();
     }
 
     /**
-     * Load shipment by increment id
-     *
-     * @param string $incrementId
-     *
+     * @param $incrementId
      * @return OrderShipment
      */
-    public function getShipmentByIncrementId(string $incrementId): OrderShipment
-    {
-        return $this->shipment->loadByIncrementId($incrementId);
+    public function getShipmentByIncrementId($incrementId) {
+        $shipment = $this->_shipment->setId(null)->loadByIncrementId($incrementId);
+        return $shipment;
     }
 
-    /**
-     * Get shipment id from increment id
-     *
-     * @param string $incrementId
-     *
-     * @return string|null
-     */
-    public function getShipmentIdFromIncrementId(string $incrementId): ?string
+    public function getEtiquetteUrl($shipment, $dimensions = null, $trackNumber = null)
     {
-        return $this->getConnection()->fetchOne(
-            $this->getConnection()->select()
-                ->from($this->getConnection()->getTableName('sales_shipment'), 'entity_id')
-                ->where('increment_id = ?', $incrementId)
-        );
-    }
 
-    /**
-     * Get connection
-     *
-     * @return AdapterInterface|null
-     */
-    protected function getConnection(): ?AdapterInterface
-    {
-        if (!$this->connection) {
-            $this->connection = $this->resource->getConnection();
-        }
 
-        return $this->connection;
-    }
+        $etiquetteUrl = array();
+        if(null !== $trackNumber){
 
-    /**
-     * Get label url
-     *
-     * @param OrderShipment|string $shipment
-     * @param string|null          $trackNumber
-     * @param string               $type
-     * @param array                $dimensions
-     *
-     * @return array
-     * @throws \SoapFault
-     * @throws \Exception
-     * @SuppressWarnings(PHPMD.NPathComplexity)
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     */
-    public function getEtiquetteUrl($shipment, $trackNumber, string $type, array $dimensions = []): array
-    {
-        $etiquetteUrl = [];
+            $track = $this->_trackFactory->create()->getCollection()
+                ->addFieldToFilter('track_number', $trackNumber)
+                ->getFirstItem();
+            $chrono_reservation_number = $track->getData('chrono_reservation_number');
 
-        // Load shipment
-        if (!$shipment instanceof OrderShipment) {
-            $shipment = $this->getShipmentByIncrementId($shipment);
-        }
+            if(strlen($chrono_reservation_number) > 50){
+                $etiquetteUrl[] =  base64_decode($chrono_reservation_number);
+            }else{
 
-        $order = $shipment->getOrder();
-        $shippingMethod = explode('_', $order->getShippingMethod());
-        $shippingMethod = isset($shippingMethod[1]) ? $shippingMethod[1] : $shippingMethod[0];
+                $etiquetteUrl[] = base64_decode($this->_helperWebservice->getEtiquetteByReservationNumber($trackNumber));
 
-        if ($trackNumber !== null) {
-            $etiquetteUrl[] = base64_decode(
-                $this->helperWebserviceNotifier->getEtiquetteByReservationNumber(
-                    $trackNumber,
-                    $shippingMethod,
-                    $type,
-                    $order->getShippingAddress()
-                )
-            );
-
-            return $etiquetteUrl;
-        }
-
-        // Get all tracks
-        if ($shipTracks = $shipment->getAllTracks()) {
-            $revisionNumbers = [];
-            foreach ($shipTracks as $shipTrack) {
-                if ($shipTrack->getNumber() && $shipTrack->getChronoReservationNumber()) {
-                    $chronoReservationNumber = $shipTrack->getData('chrono_reservation_number');
-                    if (strlen($chronoReservationNumber) > 50) {
-                        $etiquetteUrl[] = base64_decode($chronoReservationNumber);
-                    } elseif (!in_array($chronoReservationNumber, $revisionNumbers)) {
-                        $revisionNumbers[] = $chronoReservationNumber;
-
-                        $etiquetteUrl[] = base64_decode(
-                            $this->helperWebserviceNotifier->getEtiquetteByReservationNumber(
-                                $chronoReservationNumber,
-                                $shippingMethod,
-                                'shipping',
-                                $shipment->getOrder()->getShippingAddress()
-                            )
-                        );
-                    }
-                }
             }
 
             return $etiquetteUrl;
+
         }
 
-        $trackDatas = $this->createTrackToShipment($shipment, [], $dimensions);
-        foreach ($trackDatas as $trackData) {
-            $etiquetteUrl[] = base64_decode(
-                $this->helperWebserviceNotifier->getEtiquetteByReservationNumber(
-                    $trackData['track_number'],
-                    $shippingMethod,
-                    $type,
-                    $order->getShippingAddress()
-                )
-            );
+
+        if(!$shipment instanceof \Magento\Sales\Model\Order\Shipment) {
+            $shipment = $this->_shipment->setData(null)->load($shipment);
         }
 
-        return $etiquetteUrl;
-    }
 
-    /**
-     * Get return for shipment
-     *
-     * @param string $shipmentId
-     *
-     * @return mixed
-     */
-    public function getReturnsForShipment(string $shipmentId)
-    {
-        return $this->ltHistoryFactory->create()->getCollection()
-            ->addFieldToFilter('shipment_id', $shipmentId)
-            ->addFieldToFilter('type', static::HISTORY_TYPE_RETURN);
-    }
+        if ($_shipTracks = $shipment->getAllTracks()) {
 
-    /**
-     * Get return for shipment
-     *
-     * @param string $shipmentId
-     *
-     * @return mixed
-     */
-    public function getTrackingForShipment(string $shipmentId)
-    {
-        return $this->ltHistoryFactory->create()->getCollection()
-            ->addFieldToFilter('shipment_id', $shipmentId)
-            ->addFieldToFilter('type', static::HISTORY_TYPE_SHIPMENT);
+            $revisionnumbers = array();
+            foreach ($_shipTracks as $_shipTrack) {
+                $conditionTrack = true;
+                if($trackNumber != null){
+                    $conditionTrack = $_shipTrack->getNumber() == $trackNumber;
+                }
+
+                if ($_shipTrack->getNumber() && $_shipTrack->getChronoReservationNumber() && $conditionTrack) {
+                    $chrono_reservation_number = $_shipTrack->getData('chrono_reservation_number');
+
+
+                    if(strlen($chrono_reservation_number) > 50){
+                        $etiquetteUrl[] = base64_decode($chrono_reservation_number);
+                    }else{
+                        if(!in_array($chrono_reservation_number , $revisionnumbers)){
+                            $revisionnumbers[] = $chrono_reservation_number;
+                            $etiquetteUrl[] = base64_decode($this->_helperWebservice->getEtiquetteByReservationNumber($chrono_reservation_number));
+                        }
+
+                    }
+
+                }
+            }
+            if (count($etiquetteUrl) > 0) {
+                return $etiquetteUrl;
+            }
+        }
+
+        /* pas de tracking chronopost */
+        return $this->createTrackToShipment($shipment, array(), $dimensions);
     }
 }

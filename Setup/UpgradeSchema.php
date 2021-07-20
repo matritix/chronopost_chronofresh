@@ -1,18 +1,4 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Setup;
 
 use Magento\Framework\DB\Adapter\AdapterInterface;
@@ -21,18 +7,16 @@ use Magento\Framework\Setup\UpgradeSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
 
-/**
- * Class UpgradeSchema
- *
- * @package Chronopost\Chronorelais\Setup
- */
 class UpgradeSchema implements UpgradeSchemaInterface
 {
     public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
         $installer = $setup;
-
         $installer->startSetup();
+
+        //handle all possible upgrade versions
+
+        $connection = $setup->getConnection();
 
         if (version_compare($context->getVersion(), '1.0.1') < 0) {
             if (!$installer->tableExists('chronopost_order_export_status')) {
@@ -77,12 +61,12 @@ class UpgradeSchema implements UpgradeSchemaInterface
         }
 
         if (version_compare($context->getVersion(), '1.0.2') < 0) {
-            $tableName = $installer->getTable('sales_shipment_track');
-            $installer->getConnection()->modifyColumn($tableName, 'chrono_reservation_number', array(
-                'type'     => Table::TYPE_TEXT,
-                'length'   => 100000,
+            $tableName = $installer->getTable("sales_shipment_track");
+            $installer->getConnection()->modifyColumn($tableName,'chrono_reservation_number',array(
+                'type' => Table::TYPE_TEXT,
+                'length' => 100000,
                 'nullable' => true,
-                'comment'  => 'etiquette content'
+                'comment' => 'etiquette content'
             ));
         }
 
@@ -91,10 +75,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 $installer->getTable('quote'),
                 'relais_id',
                 [
-                    'type'     => Table::TYPE_TEXT,
-                    'length'   => 50,
+                    'type' => Table::TYPE_TEXT,
+                    'length' => 50,
                     'nullable' => true,
-                    'comment'  => 'Relais ID',
+                    'comment' => 'Relais ID',
                 ]
             );
 
@@ -102,10 +86,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 $installer->getTable('sales_order'),
                 'relais_id',
                 [
-                    'type'     => Table::TYPE_TEXT,
-                    'length'   => 50,
+                    'type' => Table::TYPE_TEXT,
+                    'length' => 50,
                     'nullable' => true,
-                    'comment'  => 'Relais ID',
+                    'comment' => 'Relais ID',
                 ]
             );
         }
@@ -115,10 +99,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 $installer->getTable('quote'),
                 'chronopostsrdv_creneaux_info',
                 [
-                    'type'     => Table::TYPE_TEXT,
-                    'length'   => 100000,
+                    'type' => Table::TYPE_TEXT,
+                    'length' => 100000,
                     'nullable' => true,
-                    'comment'  => 'Info RDV',
+                    'comment' => 'Info RDV',
                 ]
             );
 
@@ -126,10 +110,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 $installer->getTable('sales_order'),
                 'chronopostsrdv_creneaux_info',
                 [
-                    'type'     => Table::TYPE_TEXT,
-                    'length'   => 100000,
+                    'type' => Table::TYPE_TEXT,
+                    'length' => 100000,
                     'nullable' => true,
-                    'comment'  => 'Info RDV',
+                    'comment' => 'Info RDV',
                 ]
             );
 
@@ -205,6 +189,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     ->setComment('Chronopost contract order');
                 $installer->getConnection()->createTable($table);
             }
+
         }
 
         if (version_compare($context->getVersion(), '1.0.7') < 0) {
@@ -256,68 +241,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     );
                 $installer->getConnection()->createTable($table);
             }
-        }
 
-        if (version_compare($context->getVersion(), '1.2.4') < 0) {
-            if ($installer->tableExists('chronopost_chronorelais_lt_history')) {
-                $installer->getConnection()->addColumn(
-                    $installer->getTable('chronopost_chronorelais_lt_history'),
-                    'type',
-                    [
-                        'type'     => Table::TYPE_SMALLINT,
-                        'length'   => 2,
-                        'nullable' => false,
-                        'default'  => 1,
-                        'comment'  => '1 : Shipment, 2 : Return',
-                    ]
-                );
-                $installer->getConnection()->addColumn(
-                    $installer->getTable('chronopost_chronorelais_lt_history'),
-                    'reservation',
-                    [
-                        'type'     => Table::TYPE_INTEGER,
-                        'nullable' => true,
-                        'default'  => null,
-                        'comment'  => 'Reservation number',
-                    ]
-                );
-            }
-        }
-
-        if (version_compare($context->getVersion(), '1.2.7') < 0) {
-            $installer->getConnection()->addColumn(
-                $installer->getTable('quote'),
-                'force_saturday_option',
-                [
-                    'type'     => Table::TYPE_BOOLEAN,
-                    'nullable' => true,
-                    'comment'  => 'Saturday option'
-                ]
-            );
-
-            $installer->getConnection()->addColumn(
-                $installer->getTable('sales_order'),
-                'force_saturday_option',
-                [
-                    'type'     => Table::TYPE_BOOLEAN,
-                    'nullable' => true,
-                    'comment'  => 'Saturday option'
-                ]
-            );
-        }
-
-        if (version_compare($context->getVersion(), '1.2.8') < 0) {
-            $installer->getConnection()->addColumn(
-                $installer->getTable('sales_order'),
-                'force_saturday_option_generated',
-                [
-                    'type'     => Table::TYPE_BOOLEAN,
-                    'nullable' => true,
-                    'comment'  => 'Saturday generation option'
-                ]
-            );
         }
 
         $installer->endSetup();
     }
+
 }

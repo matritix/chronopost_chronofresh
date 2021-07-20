@@ -1,33 +1,12 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Controller\Ajax;
 
 use Magento\Framework\App\Action\Context;
-use Magento\Framework\Controller\Result\Json;
-use Magento\Framework\Controller\Result\JsonFactory;
-use Chronopost\Chronorelais\Helper\Data as HelperData;
-use Chronopost\Chronorelais\Helper\Webservice as HelperWS;
-use Magento\Framework\App\Action\Action as Action;
+use \Magento\Framework\Controller\Result\JsonFactory;
+use \Chronopost\Chronorelais\Helper\Data as HelperData;
+use \Chronopost\Chronorelais\Helper\Webservice as HelperWS;
 
-/**
- * Class CheckCarrierConfigContract
- *
- * @package Chronopost\Chronorelais\Controller\Ajax
- */
-class CheckCarrierConfigContract extends Action
+class checkCarrierConfigContract extends \Magento\Framework\App\Action\Action
 {
 
     /**
@@ -46,19 +25,19 @@ class CheckCarrierConfigContract extends Action
     protected $_helperWS;
 
     /**
-     * CheckCarrierConfigContract constructor.
-     *
-     * @param Context     $context
+     * getCarriersLogos constructor.
+     * @param Context $context
      * @param JsonFactory $jsonFactory
-     * @param HelperData  $_helperData
-     * @param HelperWS    $_helperWS
+     * @param HelperData $_helperData
+     * @param HelperWS $_helperWS
      */
     public function __construct(
         Context $context,
         JsonFactory $jsonFactory,
         HelperData $_helperData,
         HelperWS $_helperWS
-    ) {
+    )
+    {
         parent::__construct($context);
         $this->_resultJsonFactory = $jsonFactory;
         $this->_helperData = $_helperData;
@@ -66,9 +45,8 @@ class CheckCarrierConfigContract extends Action
     }
 
     /**
-     * Check if shipping method is enabled
-     *
-     * @return Json
+     * recuperation des logos des modes de livraison chronopost
+     * @return \Magento\Framework\Controller\Result\Json
      */
     public function execute()
     {
@@ -79,12 +57,11 @@ class CheckCarrierConfigContract extends Action
         $result = $this->_resultJsonFactory->create();
 
         $data = "not allowed";
-        if ($this->_helperWS->shippingMethodEnabled($shippingMethod, $contractId)) {
+        if($this->_helperWS->shippingMethodEnabled($shippingMethod, $contractId)) {
             $data = "allowed";
         }
 
         $result->setData($data);
-
         return $result;
     }
 }

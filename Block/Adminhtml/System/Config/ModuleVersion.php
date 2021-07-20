@@ -1,18 +1,4 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Block\Adminhtml\System\Config;
 
 use Magento\Backend\Block\Template\Context;
@@ -21,25 +7,15 @@ use Magento\Framework\Data\Form\Element\AbstractElement;
 use Magento\Framework\Module\ModuleListInterface;
 use Chronopost\Chronorelais\Helper\Data as HelperData;
 
-/**
- * Class ModuleVersion
- *
- * @package Chronopost\Chronorelais\Block\Adminhtml\System\Config
- */
 class ModuleVersion extends Field
 {
 
-    /**
-     * @var ModuleListInterface
-     */
     protected $_moduleList;
 
     /**
-     * ModuleVersion constructor.
-     *
-     * @param Context             $context
+     * @param Context $context
      * @param ModuleListInterface $moduleList
-     * @param array               $data
+     * @param array $data
      */
     public function __construct(
         Context $context,
@@ -84,4 +60,5 @@ class ModuleVersion extends Field
 
         return is_array($infos) ? $infos['setup_version'] : '';
     }
+
 }

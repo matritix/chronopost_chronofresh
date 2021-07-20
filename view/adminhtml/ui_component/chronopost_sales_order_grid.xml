@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
 <listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
     <argument name="data" xsi:type="array">
         <item name="js_config" xsi:type="array">
             <item name="provider" xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid_data_source</item>
             <item name="deps" xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid_data_source</item>
         </item>
-        <item name="spinner" xsi:type="string">chronopost_sales_order_columns</item>
+        <item name="spinner" xsi:type="string">sales_order_columns</item>
         <item name="buttons" xsi:type="array" />
     </argument>
     <dataSource name="chronopost_sales_order_grid_data_source">
@@ -25,32 +31,10 @@
     <listingToolbar name="listing_top">
         <argument name="data" xsi:type="array">
             <item name="config" xsi:type="array">
-                <item name="template" xsi:type="string">ui/grid/toolbar</item>
-                <item name="stickyTmpl" xsi:type="string">ui/grid/sticky/toolbar</item>
+                <item name="sticky" xsi:type="boolean">true</item>
             </item>
         </argument>
-        <bookmark name="bookmarks">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="storageConfig" xsi:type="array">
-                        <item name="namespace" xsi:type="string">chronopost_sales_order_grid</item>
-                    </item>
-                </item>
-            </argument>
-        </bookmark>
-        <component name="columns_controls">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="columnsData" xsi:type="array">
-                        <item name="provider"
-                              xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.chronopost_sales_order_columns
-                        </item>
-                    </item>
-                    <item name="component" xsi:type="string">Magento_Ui/js/grid/controls/columns</item>
-                    <item name="displayArea" xsi:type="string">dataGridActions</item>
-                </item>
-            </argument>
-        </component>
+        <columnsControls name="columns_controls"/>
         <filters name="listing_filters">
             <filterSelect name="store_id">
                 <argument name="optionsProvider" xsi:type="configurableObject">
@@ -58,15 +42,13 @@
                 </argument>
                 <argument name="data" xsi:type="array">
                     <item name="config" xsi:type="array">
-                        <item name="columnsProvider"
-                              xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.chronopost_sales_order_columns
+                        <item name="provider" xsi:type="string">${ $.parentName }</item>
+                        <item name="imports" xsi:type="array">
+                            <item name="visible" xsi:type="string">ns = ${ $.ns }, componentType = column, index = ${ $.index }:visible</item>
                         </item>
-                        <item name="storageConfig" xsi:type="array">
-                            <item name="provider"
-                                  xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.listing_top.bookmarks
-                            </item>
-                            <item name="namespace" xsi:type="string">current.filters</item>
-                        </item>
+                        <item name="caption" xsi:type="string" translate="true">All Store Views</item>
+                        <item name="dataScope" xsi:type="string">store_id</item>
+                        <item name="label" xsi:type="string" translate="true">Purchase Point</item>
                     </item>
                 </argument>
             </filterSelect>
@@ -82,7 +64,7 @@
                     <item name="config" xsi:type="array">
                         <item name="type" xsi:type="string">imprimer_etiquettes</item>
                         <item name="label" xsi:type="string" translate="true">Print labels</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/impression_printEtiquetteMass"/>
+                        <item name="url" xsi:type="url" path="chronopost_chronorelais/sales/impression_printEtiquetteMass"/>
                     </item>
                 </argument>
             </action>
@@ -91,23 +73,10 @@
                     <item name="config" xsi:type="array">
                         <item name="type" xsi:type="string">annuler_etiquettes</item>
                         <item name="label" xsi:type="string" translate="true">Cancel Labels</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/impression_cancelEtiquetteMass"/>
+                        <item name="url" xsi:type="url" path="chronopost_chronorelais/sales/impression_cancelEtiquetteMass"/>
                         <item name="confirm" xsi:type="array">
                             <item name="title" xsi:type="string" translate="true">Cancel Labels</item>
-                            <item name="message" xsi:type="string" translate="true">Are you sure you want cancel labels?</item>
-                        </item>
-                    </item>
-                </argument>
-            </action>
-            <action name="cancel_returns">
-                <argument name="data" xsi:type="array">
-                    <item name="config" xsi:type="array">
-                        <item name="type" xsi:type="string">annuler_etiquettes_retour</item>
-                        <item name="label" xsi:type="string" translate="true">Cancel Return Labels</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/impression_cancelEtiquetteRetourMass"/>
-                        <item name="confirm" xsi:type="array">
-                            <item name="title" xsi:type="string" translate="true">Cancel Return Labels</item>
-                            <item name="message" xsi:type="string" translate="true">Are you sure you want to cancel these return labels?</item>
+                            <item name="message" xsi:type="string" translate="true">Are you sure you want cancel labels ?</item>
                         </item>
                     </item>
                 </argument>
@@ -123,58 +92,28 @@
                     <item name="0" xsi:type="array">
                         <item name="type" xsi:type="string">enable</item>
                         <item name="label" xsi:type="string" translate="true">Yes</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/impression_livraisonSamediStatusMass">
+                        <item name="url" xsi:type="url" path="chronopost_chronorelais/sales/impression_livraisonSamediStatusMass">
                             <param name="status">Yes</param>
                         </item>
                     </item>
                     <item name="1" xsi:type="array">
                         <item name="type" xsi:type="string">disable</item>
                         <item name="label" xsi:type="string" translate="true">No</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/impression_livraisonSamediStatusMass">
+                        <item name="url" xsi:type="url" path="chronopost_chronorelais/sales/impression_livraisonSamediStatusMass">
                             <param name="status">No</param>
                         </item>
                     </item>
                 </argument>
             </action>
         </massaction>
-        <paging name="listing_paging">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="storageConfig" xsi:type="array">
-                        <item name="provider"
-                              xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.listing_top.bookmarks
-                        </item>
-                        <item name="namespace" xsi:type="string">current.paging</item>
-                    </item>
-                    <item name="selectProvider"
-                          xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.chronopost_sales_order_columns.ids
-                    </item>
-                </item>
-            </argument>
-        </paging>
+        <paging name="listing_paging"/>
     </listingToolbar>
-    <columns name="chronopost_sales_order_columns">
+    <columns name="sales_order_columns">
         <argument name="data" xsi:type="array">
             <item name="config" xsi:type="array">
-                <!-- Bookmarks behaviour -->
-                <item name="storageConfig" xsi:type="array">
-                    <item name="provider"
-                          xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.listing_top.bookmarks
-                    </item>
-                    <item name="namespace" xsi:type="string">current</item>
-                </item>
-
                 <item name="childDefaults" xsi:type="array">
-                    <item name="controlVisibility" xsi:type="boolean">true</item>
-                    <item name="storageConfig" xsi:type="array">
-                        <item name="provider"
-                              xsi:type="string">chronopost_sales_order_grid.chronopost_sales_order_grid.listing_top.bookmarks
-                        </item>
-                        <item name="root" xsi:type="string">columns.${ $.index }</item>
-                        <item name="namespace" xsi:type="string">current.${ $.storageConfig.root}</item>
-                    </item>
                     <item name="fieldAction" xsi:type="array">
-                        <item name="provider" xsi:type="string">sales_order_grid.sales_order_grid.chronopost_sales_order_columns.actions</item>
+                        <item name="provider" xsi:type="string">sales_order_grid.sales_order_grid.sales_order_columns.actions</item>
                         <item name="target" xsi:type="string">applyAction</item>
                         <item name="params" xsi:type="array">
                             <item name="0" xsi:type="string">view</item>
@@ -308,7 +247,6 @@
                 <item name="config" xsi:type="array">
                     <item name="filter" xsi:type="string">text</item>
                     <item name="label" xsi:type="string" translate="true">Tracking</item>
-                    <item name="visible" xsi:type="boolean">false</item>
                 </item>
             </argument>
         </column>
@@ -320,32 +258,11 @@
                 </item>
             </argument>
         </column>
-        <column name="force_saturday_option" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOption">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="filter" xsi:type="string">text</item>
-                    <item name="label" xsi:type="string" translate="true">Delivery on Saturday (customer choice)</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
-                    <item name="visible" xsi:type="boolean">false</item>
-                </item>
-            </argument>
-        </column>
-        <column name="force_saturday_option_export" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOptionExport">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="filter" xsi:type="string">text</item>
-                    <item name="label" xsi:type="string" translate="true">Delivery on Saturday (admin value)</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
-                    <item name="visible" xsi:type="boolean">false</item>
-                </item>
-            </argument>
-        </column>
-        <column name="force_saturday_option_generated" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOptionGenerated">
+        <column name="livraison_le_samedi" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\LivraisonSamedi">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
                     <item name="filter" xsi:type="string">text</item>
                     <item name="label" xsi:type="string" translate="true">Delivery on Saturday</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>
             </argument>
         </column>
@@ -422,8 +339,8 @@
         <actionsColumn name="multi_colis" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\MultiColis">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="viewUrlPathGenerate" xsi:type="string">chronorelais/sales/impression_generateEtiquette</item>
-                    <item name="label" xsi:type="string" translate="true">Number of packages</item>
+                    <item name="viewUrlPathGenerate" xsi:type="string">chronopost_chronorelais/sales/impression_generateEtiquette</item>
+                    <item name="label" xsi:type="string" translate="true">Nombre de colis</item>
                     <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>
             </argument>
@@ -432,7 +349,7 @@
         <actionsColumn name="weight" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\WeightInput">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="label" xsi:type="string" translate="true">Weight</item>
+                    <item name="label" xsi:type="string" translate="true">Weight (KG)</item>
                     <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>
             </argument>
@@ -477,7 +394,7 @@
         <actionsColumn name="etiquette_expedition" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\PrintAction">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="viewUrlPath" xsi:type="string">chronorelais/sales/impression_printEtiquette/type/shipping</item>
+                    <item name="viewUrlPath" xsi:type="string">chronopost_chronorelais/sales/impression_printEtiquette</item>
                     <item name="label" xsi:type="string" translate="true">Print labels</item>
                     <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>
@@ -487,10 +404,8 @@
         <actionsColumn name="etiquette_retour" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\RetourAction">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="viewUrlPath" xsi:type="string">chronorelais/sales/impression_printEtiquetteRetour</item>
-                    <item name="viewGeneratedUrlPath" xsi:type="string">chronorelais/sales/impression_printEtiquette/type/return</item>
-                    <item name="deleteUrlPath" xsi:type="string">chronorelais/sales/impression_cancelEtiquette</item>
-                    <item name="label" xsi:type="string" translate="true">Printing return labels</item>
+                    <item name="viewUrlPath" xsi:type="string">chronopost_chronorelais/sales/impression_printEtiquetteRetour</item>
+                    <item name="label" xsi:type="string" translate="true">Print After-sales return</item>
                     <item name="headerTmpl" xsi:type="string">Chronopost_Chronorelais/grid/columns/html</item>
                     <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>

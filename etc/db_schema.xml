@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <table name="ml_chronordv" resource="default" comment="chrono quotas added" charset="utf8">
+        <column name="id" xsi:type="int" padding="5" unsigned="true" identity="true" nullable="false"></column>
+        <column name="quotaslimit" xsi:type="int" nullable="false" ></column>  
+		<column name="quotasactuel" xsi:type="int" nullable="false" ></column>  
+		<column name="quotasatteint" xsi:type="int" nullable="false" ></column>  
+        <column name="created_at" xsi:type="timestamp"  on_update="false"></column> 
+		<constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+    </table>
+    <table name="ml_chronordv_relaislocator" resource="default" comment="chrono fresh locator added" charset="utf8">
+        <column name="id" xsi:type="int" padding="5" unsigned="true" identity="true" nullable="false"></column>
+        <column name="identifiant_chronopost_pointA2PAS" xsi:type="varchar" nullable="false" ></column>  
+		<column name="adresse1" xsi:type="varchar" nullable="false" ></column>  
+		<column name="adresse2" xsi:type="varchar" nullable="false" ></column>  
+		<column name="adresse3" xsi:type="varchar" nullable="false" ></column>
+		<column name="latitude" xsi:type="varchar" nullable="false" ></column>
+		<column name="longitude" xsi:type="varchar" nullable="false" ></column>
+		<column name="codePostal" xsi:type="varchar" nullable="false" ></column>
+		<column name="localite" xsi:type="varchar" nullable="false" ></column>
+		<column name="nom_enseigne" xsi:type="varchar" nullable="false" ></column> 
+		<column name="ischronofresh" xsi:type="varchar" nullable="false" ></column> 
+        <column name="horaires_ouverture_dimanche" xsi:type="varchar"  nullable="false"></column> 
+		<column name="horaires_ouverture_samedi" xsi:type="varchar"  nullable="false"></column> 
+		<column name="horaires_ouverture_vendredi" xsi:type="varchar"  nullable="false"></column> 
+		<column name="horaires_ouverture_jeudi" xsi:type="varchar"  nullable="false"></column> 
+		<column name="horaires_ouverture_mercredi" xsi:type="varchar"  nullable="false"></column> 
+		<column name="horaires_ouverture_mardi" xsi:type="varchar"  nullable="false"></column> 
+		<column name="horaires_ouverture_lundi" xsi:type="varchar"  nullable="false"></column> 
+		<constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+		<index referenceId="NEWSLETTER_SUBSCRIBER_CUSTOMER_ID" indexType="btree">
+    <column name="codePostal"/>
+</index>
+    </table>
+</schema>

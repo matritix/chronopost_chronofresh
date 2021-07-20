@@ -1,174 +1,155 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
 
 namespace Chronopost\Chronorelais\Plugin;
 
-use Magento\Checkout\Api\Data\ShippingInformationInterface;
-use Magento\Framework\Exception\NoSuchEntityException;
-use Chronopost\Chronorelais\Helper\Data;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Exception\StateException;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Quote\Api\CartRepositoryInterface;
 
 use Chronopost\Chronorelais\Helper\Webservice as HelperWebservice;
-
-/**
- * Class ShippingInformationManagement
- *
- * @package Chronopost\Chronorelais\Plugin
- */
 class ShippingInformationManagement
 {
     /**
      * @var CheckoutSession
      */
-    protected $checkoutSession;
+    protected $_checkoutSession;
 
     /**
      * Quote repository.
      *
      * @var CartRepositoryInterface
      */
-    protected $quoteRepository;
+    protected $_quoteRepository;
 
     /**
      * @var HelperWebservice
      */
-    protected $helperWebservice;
-    /**
-     * @var ScopeConfigInterface
-     */
-    private $scopeConfig;
-    /**
-     * @var Data
-     */
-    private $helper;
+    protected $_helperWebservice;
 
     /**
      * ShippingInformationManagement constructor.
-     *
-     * @param CheckoutSession         $checkoutSession
+     * @param CheckoutSession $checkoutSession
      * @param CartRepositoryInterface $cartRepository
-     * @param HelperWebservice        $webservice
-     * @param ScopeConfigInterface    $scopeConfig
-     * @param Data                    $helper
+     * @param HelperWebservice $webservice
      */
     public function __construct(
         CheckoutSession $checkoutSession,
         CartRepositoryInterface $cartRepository,
-        HelperWebservice $webservice,
-        ScopeConfigInterface $scopeConfig,
-        Data $helper
-    ) {
-        $this->checkoutSession = $checkoutSession;
-        $this->quoteRepository = $cartRepository;
-        $this->helperWebservice = $webservice;
-        $this->scopeConfig = $scopeConfig;
-        $this->helper = $helper;
+        HelperWebservice $webservice
+    )
+    {
+        $this->_checkoutSession = $checkoutSession;
+        $this->_quoteRepository = $cartRepository;
+        $this->_helperWebservice = $webservice;
     }
 
     /**
-     * Before save shipping information
-     *
      * @param \Magento\Checkout\Model\ShippingInformationManagement $subject
-     * @param string                                                $cartId
-     * @param ShippingInformationInterface                          $addressInformation
-     *
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     *
-     * @throws StateException|NoSuchEntityException
+     * @param $cartId
+     * @param \Magento\Checkout\Api\Data\ShippingInformationInterface $addressInformation
+     * @throws StateException
      */
     public function beforeSaveAddressInformation(
         \Magento\Checkout\Model\ShippingInformationManagement $subject,
         $cartId,
-        ShippingInformationInterface $addressInformation
+        \Magento\Checkout\Api\Data\ShippingInformationInterface $addressInformation
     ) {
+
         $methodCode = $addressInformation->getShippingMethodCode();
 
-        $quote = $this->quoteRepository->getActive($cartId);
+        $quote = $this->_quoteRepository->getActive($cartId);
         $quote->setRelaisId('');
-        $quote->setData('chronopostsrdv_creneaux_info', '');
-
-        // If relay delivery method: check if relay point checked
-        if (preg_match('/chronorelais/', $methodCode, $matches, PREG_OFFSET_CAPTURE)) {
-            $relayId = $this->checkoutSession->getData("chronopost_chronorelais_relais_id");
-            if (!$relayId) {
+        $quote->setData('chronopostsrdv_creneaux_info','');
+		// var_dump($this->_checkoutSession->getData("chronopostsrdv_creneaux_info"));
+        /* Si mode de livraison relais : vérif si point relais coché */
+        if(preg_match('/chronorelais/',$methodCode,$matches,PREG_OFFSET_CAPTURE)) {
+            $relaisId = $this->_checkoutSession->getData("chronopost_chronorelais_relais_id");
+            if(!$relaisId) {
                 throw new StateException(__('Select a pick-up point'));
             }
 
-            $relay = $this->helperWebservice->getDetailRelaisPoint($relayId);
-            if ($relay) {
+            $relais = $this->_helperWebservice->getDetailRelaisPoint($relaisId);
+            if($relais) {
                 $address = $addressInformation->getShippingAddress();
                 $address->setCustomerAddressId(0);
                 $address->setSaveInAddressBook(0);
                 $address->setSameAsBilling(0);
-                $address->setCity($relay->localite);
-                $address->setPostcode($relay->codePostal);
-                $address->setStreet([$relay->adresse1, $relay->adresse2, $relay->adresse3]);
-
-                $nom = '';
-                if (isset($relay->nom)) {
-                    $nom = $relay->nom;
-                } elseif (isset($relay->nomEnseigne)) {
-                    $nom = $relay->nomEnseigne;
+                $address->setCity($relais->localite);
+                $address->setPostcode($relais->codePostal);
+                $address->setStreet(array($relais->adresse1,$relais->adresse2,$relais->adresse3));
+                if(isset($relais->nom) ){
+                    $nom = $relais->nom;
+                }else{
+                    $nom =  $relais->nomEnseigne;
                 }
-
                 $address->setCompany($nom);
                 $addressInformation->setShippingAddress($address);
 
-                $quote->setShippingAddress($address)->setRelaisId($relayId);
+                $quote->setShippingAddress($address)->setRelaisId($relaisId);
+
             } else {
                 throw new StateException(__("The pick-up point does not exist."));
             }
-        } elseif (preg_match('/chronopostsrdv/', $methodCode, $matches, PREG_OFFSET_CAPTURE)) {
-            // If delivery method RDV: check if Time selected
-            $rdvInfo = $this->checkoutSession->getData("chronopostsrdv_creneaux_info");
-            if (!$rdvInfo) {
+        } elseif(preg_match('/chronopostsrdv/',$methodCode,$matches,PREG_OFFSET_CAPTURE)) {
+            /* Si mode de livraison RDV : vérif si Horaire selectionné */
+            $rdvInfo = $this->_checkoutSession->getData("chronopostsrdv_creneaux_info");
+	
+            if(!$rdvInfo) {
                 throw new StateException(__('Please select an appointment date'));
             }
 
-            // Verification of the chosen slots
-            $arrayRdvInfo = json_decode($rdvInfo, true);
-            $confirm = $this->helperWebservice->confirmDeliverySlot($arrayRdvInfo);
-            if ($confirm->return->code !== 0) {
+            /* verification du creneaux choisi */
+            $arrayRdvInfo = json_decode($rdvInfo,true);
+			
+			
+			//added chronofreshsrdv
+			$carrierModel = \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE;
+			
+			//end added
+			
+            $confirm = $this->_helperWebservice->confirmDeliverySlot($arrayRdvInfo,$carrierModel);
+            if($confirm->return->code != 0) {
                 throw new StateException(__($confirm->return->message));
             }
-
             $arrayRdvInfo['productCode'] = $confirm->return->productServiceV2->productCode;
             $arrayRdvInfo['serviceCode'] = $confirm->return->productServiceV2->serviceCode;
-            if (isset($confirm->return->productServiceV2->asCode)) {
+            if(isset($confirm->return->productServiceV2->asCode))
                 $arrayRdvInfo['asCode'] = $confirm->return->productServiceV2->asCode;
+            $quote->setData('chronopostsrdv_creneaux_info',json_encode($arrayRdvInfo));
+        } elseif(preg_match('/chronofreshsrdv/',$methodCode,$matches,PREG_OFFSET_CAPTURE)) {
+            /* Si mode de livraison RDV : vérif si Horaire selectionné */
+            $rdvInfo = $this->_checkoutSession->getData("chronopostsrdv_creneaux_info");
+            if(!$rdvInfo) {
+                throw new StateException(__('Please select an appointment date'));
             }
 
-            $quote->setData('chronopostsrdv_creneaux_info', json_encode($arrayRdvInfo));
+			//added chronofreshsrdv
+			$carrierModel = \Chronopost\Chronorelais\Model\Carrier\ChronofreshSrdv::CARRIER_CODE;
+			//end added
+            /* verification du creneaux choisi */
+            $arrayRdvInfo = json_decode($rdvInfo,true);
+            $confirm = $this->_helperWebservice->confirmDeliverySlot($arrayRdvInfo,$carrierModel);
+            if($confirm->return->code != 0) {
+                throw new StateException(__($confirm->return->message));
+            }
+            $arrayRdvInfo['productCode'] = $confirm->return->productServiceV2->productCode;
+            $arrayRdvInfo['serviceCode'] = $confirm->return->productServiceV2->serviceCode;
+            if(isset($confirm->return->productServiceV2->asCode))
+                $arrayRdvInfo['asCode'] = $confirm->return->productServiceV2->asCode;
+            $quote->setData('chronopostsrdv_creneaux_info',json_encode($arrayRdvInfo));
         }
+		else{
+			$rdvInfo = $this->_checkoutSession->getData("chronopostsrdv_creneaux_info");
+	
+            if(!$rdvInfo) {
+                throw new StateException(__('Please select an appointment date'));
+            }
+				 $arrayRdvInfo = json_decode($rdvInfo,true);
+				$quote->setData('chronopostsrdv_creneaux_info',json_encode($arrayRdvInfo));
+		}
+		
 
-        $quote->collectTotals(); // recollect totals to apply potential saturday additional cost.
-
-        $isSendingDay = $this->helper->isSendingDay();
-        $saturdayOptionValueSession = $this->checkoutSession->getData('chronopost_saturday_option');
-        $customerChoiceEnabled = (bool)$this->scopeConfig->getValue('chronorelais/saturday/display_to_customer');
-
-        if ($saturdayOptionValueSession && $customerChoiceEnabled === true && $isSendingDay === true) {
-            $quote->setData('force_saturday_option', '1');
-        } else {
-            $quote->setData('force_saturday_option', '0');
-        }
-
-        $this->quoteRepository->save($quote);
+		
+        $this->_quoteRepository->save($quote);
     }
 }

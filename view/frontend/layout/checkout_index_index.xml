@@ -1,4 +1,10 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <head>
         <css src="Chronopost_Chronorelais::css/leaflet/leaflet.css" />
@@ -14,23 +20,14 @@
                                     <item name="children" xsi:type="array">
                                         <item name="shipping-step" xsi:type="array">
                                             <item name="children" xsi:type="array">
-                                                <item name="step-config" xsi:type="array">
-                                                    <item name="children" xsi:type="array">
-                                                        <item name="shipping-rates-validation" xsi:type="array">
-                                                            <item name="children" xsi:type="array">
-                                                                <item name="chronopost" xsi:type="array">
-                                                                    <item name="component" xsi:type="string">Chronopost_Chronorelais/js/view/shipping-rates-validation</item>
-                                                                </item>
-                                                            </item>
-                                                        </item>
-                                                    </item>
-                                                </item>
                                                 <item name="shippingAddress" xsi:type="array">
                                                     <item name="children" xsi:type="array">
                                                         <item name="shippingAdditional" xsi:type="array">
                                                             <item name="component" xsi:type="string">uiComponent</item>
                                                             <item name="displayArea" xsi:type="string">shippingAdditional</item>
                                                             <item name="children" xsi:type="array">
+
+                                                                <!-- gestion logo, click sur chronorelais, ... -->
                                                                 <item name="chronopost_chronorelais_shipping_method_extend" xsi:type="array">
                                                                     <item name="component" xsi:type="string">Chronopost_Chronorelais/js/view/checkout/shipping/chronopost</item>
                                                                 </item>
@@ -45,18 +42,22 @@
 
                                 <item name="sidebar" xsi:type="array">
                                     <item name="children" xsi:type="array">
-                                        <!-- Sidebar relay info -->
+
+                                        <!-- Sidebar info relais -->
                                         <item name="chronopost_chronorelais_sidebar_relais" xsi:type="array">
                                             <item name="component" xsi:type="string">Chronopost_Chronorelais/js/view/checkout/sidebar/info_relais</item>
                                             <item name="displayArea" xsi:type="string">shipping-information</item>
                                         </item>
-                                        <!-- Sidebar appointment info -->
+
+                                        <!-- Sidebar info RDV -->
                                         <item name="chronopost_chronorelais_sidebar_rdv" xsi:type="array">
                                             <item name="component" xsi:type="string">Chronopost_Chronorelais/js/view/checkout/sidebar/info_rdv</item>
                                             <item name="displayArea" xsi:type="string">shipping-information</item>
                                         </item>
+
                                     </item>
                                 </item>
+
                             </item>
                         </item>
                     </item>

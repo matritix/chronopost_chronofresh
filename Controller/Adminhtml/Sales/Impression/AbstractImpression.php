@@ -1,37 +1,15 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Controller\Adminhtml\Sales\Impression;
 
-use Chronopost\Chronorelais\Helper\Data as HelperData;
-use Chronopost\Chronorelais\Lib\PDFMerger\PDFMerger;
-use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
-use Magento\Framework\App\Filesystem\DirectoryList;
-use Magento\Framework\Controller\Result\Redirect;
-use Magento\Framework\Exception\FileSystemException;
-use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\View\Result\PageFactory;
+use \Magento\Framework\App\Filesystem\DirectoryList;
 
-/**
- * Class AbstractImpression
- *
- * @package Chronopost\Chronorelais\Controller\Adminhtml\Sales\Impression
- */
-abstract class AbstractImpression extends Action
+use Chronopost\Chronorelais\Helper\Data as HelperData;
+
+Abstract class AbstractImpression extends \Magento\Backend\App\Action
 {
+
     /**
      * @var PageFactory
      */
@@ -40,167 +18,33 @@ abstract class AbstractImpression extends Action
     /**
      * @var HelperData
      */
-    protected $helperData;
+    protected $_helperData;
 
     /**
      * @var DirectoryList
      */
-    protected $directoryList;
-
-    /**
-     * @var PDFMerger
-     */
-    private $PDFMerger;
+    protected $_directoryList;
 
     /**
      * AbstractImpression constructor.
-     *
-     * @param Context          $context
-     * @param DirectoryList    $directoryList
-     * @param PageFactory      $resultPageFactory
-     * @param HelperData       $helperData
-     * @param PDFMerger        $PDFMerger
-     * @param ManagerInterface $messageManager
+     * @param Context $context
+     * @param DirectoryList $directoryList
+     * @param HelperData $helperData
      */
     public function __construct(
         Context $context,
         DirectoryList $directoryList,
         PageFactory $resultPageFactory,
-        HelperData $helperData,
-        PDFMerger $PDFMerger,
-        ManagerInterface $messageManager
+        HelperData $helperData
     ) {
-        parent::__construct($context);
-        $this->directoryList = $directoryList;
+        $this->_directoryList = $directoryList;
         $this->resultPageFactory = $resultPageFactory;
-        $this->helperData = $helperData;
-        $this->PDFMerger = $PDFMerger;
-        $this->messageManager = $messageManager;
+        $this->_helperData = $helperData;
+        parent::__construct($context);
     }
 
     /**
-     * Process download mass
-     *
-     * @param array $pdfContents
-     *
-     * @return mixed
-     * @throws FileSystemException
-     */
-    public function _processDownloadMass($pdfContents)
-    {
-        $paths = [];
-        $this->createMediaChronopostFolder();
-
-        $indiceFile = 0;
-        foreach ($pdfContents as $pdf_content) {
-            $fileName = 'tmp-etiquette-' . date('H-i-s-' . $indiceFile);
-            $path = $this->directoryList->getPath('media') . '/chronopost/' . $fileName . '.pdf';
-            file_put_contents($path, $pdf_content);
-            $this->PDFMerger->addPDF($path, 'all', 'L');
-            $paths[] = $path;
-            $indiceFile++;
-        }
-
-        // Creation of a single pdf
-        $pdfMergeFileName = "merged-" . date('YmdHis') . ".pdf";
-        $pathMerge = $this->directoryList->getPath('media') . "/chronopost/" . $pdfMergeFileName;
-
-        try {
-            $this->PDFMerger->merge('file', $pathMerge);
-        } catch (\Exception $e) {
-            $this->messageManager->addErrorMessage($e->getMessage());
-
-            return $this->redirectImpressionGrid();
-        }
-
-        // Deleting temp pdf
-        foreach ($paths as $path) {
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
-
-        $this->prepareDownloadResponse($pdfMergeFileName, file_get_contents($pathMerge));
-        unlink($pathMerge);
-    }
-
-    /**
-     * Create media folder
-     *
-     * @throws FileSystemException
-     */
-    protected function createMediaChronopostFolder()
-    {
-        $path = $this->directoryList->getPath('media') . '/chronopost';
-        if (!is_dir($path)) {
-            mkdir($path, 0777);
-        }
-    }
-
-    /**
-     * Redirect impression grid
-     *
-     * @return Redirect
-     */
-    public function redirectImpressionGrid(): Redirect
-    {
-        $resultRedirect = $this->resultRedirectFactory->create();
-
-        return $resultRedirect->setPath("chronorelais/sales/impression");
-    }
-
-    /**
-     * Prepare download response
-     *
-     * @param string $fileName
-     * @param string $content
-     * @param string $contentType
-     * @param null   $contentLength
-     *
-     * @return $this
-     */
-    public function prepareDownloadResponse(
-        $fileName,
-        $content,
-        $contentType = 'application/octet-stream',
-        $contentLength = null
-    ) {
-        $isFile = false;
-        $file = null;
-        if (is_array($content)) {
-            if (!isset($content['type']) || !isset($content['value'])) {
-                return $this;
-            }
-
-            if ($content['type'] == 'filename') {
-                $isFile = true;
-                $file = $content['value'];
-                $contentLength = filesize($file);
-            }
-        }
-
-        $this->getResponse()
-            ->setHttpResponseCode(200)
-            ->setHeader('Pragma', 'public', true)
-            ->setHeader('Cache-Control', 'must-revalidate, post-check=0, pre-check=0', true)
-            ->setHeader('Content-type', $contentType, true)
-            ->setHeader('Content-Length', is_null($contentLength) ? strlen($content) : $contentLength, true)
-            ->setHeader('Content-Disposition', 'attachment; filename="' . $fileName . '"', true)
-            ->setHeader('Last-Modified', date('r'), true);
-
-        if (!is_null($content)) {
-            if ($isFile) {
-                $content = file_get_contents($file);
-            }
-
-            $this->getResponse()->setBody($content);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Check is the current user is allowed to access this section
+     * Is the user allowed to view the blog post grid.
      *
      * @return bool
      */
@@ -208,4 +52,123 @@ abstract class AbstractImpression extends Action
     {
         return $this->_authorization->isAllowed('Chronopost_Chronorelais::sales');
     }
+
+    /**
+     * @param $fileName
+     * @param $content
+     * @param string $contentType
+     * @param null $contentLength
+     * @return $this
+     */
+    public function prepareDownloadResponse($fileName,$content,$contentType = 'application/octet-stream',$contentLength = null)
+    {
+        $isFile = false;
+        $file   = null;
+        if (is_array($content)) {
+            if (!isset($content['type']) || !isset($content['value'])) {
+                return $this;
+            }
+            if ($content['type'] == 'filename') {
+                $isFile         = true;
+                $file           = $content['value'];
+                $contentLength  = filesize($file);
+            }
+        }
+
+       $this->getResponse()
+            ->setHttpResponseCode(200)
+            ->setHeader('Pragma', 'public', true)
+            ->setHeader('Cache-Control', 'must-revalidate, post-check=0, pre-check=0', true)
+            ->setHeader('Content-type', $contentType, true)
+            ->setHeader('Content-Length', is_null($contentLength) ? strlen($content) : $contentLength, true)
+            ->setHeader('Content-Disposition', 'attachment; filename="'.$fileName.'"', true)
+            ->setHeader('Last-Modified', date('r'), true);
+
+        if (!is_null($content)) {
+            if ($isFile) {
+                /*$this->getResponse()->clearBody();
+                $this->getResponse()->sendHeaders();
+
+                $ioAdapter = new \Varien_Io_File();
+                $ioAdapter->open(array('path' => $ioAdapter->dirname($file)));
+                $ioAdapter->streamOpen($file, 'r');
+                while ($buffer = $ioAdapter->streamRead()) {
+                    print $buffer;
+                }
+                $ioAdapter->streamClose();
+                if (!empty($content['rm'])) {
+                    $ioAdapter->rm($file);
+                }
+
+                exit(0);*/
+
+                $content = file_get_contents($file);
+
+            } /*else {
+                $this->getResponse()->setBody($content);
+            }*/
+            $this->getResponse()->setBody($content);
+        }
+        return $this;
+    }
+
+    /**
+     * @param $pdf_contents
+     * @return mixed
+     */
+    public function _processDownloadMass($pdf_contents) {
+
+        $paths = array();
+        $this->createMediaChronopostFolder();
+        $indiceFile = 0;
+        foreach ($pdf_contents as $pdf_content) {
+            $fileName = 'tmp-etiquette-'.date('H-i-s-'.$indiceFile);
+            /* save pdf file */
+            $path = $this->_directoryList->getPath('media').'/chronopost/' . $fileName . '.pdf';
+            file_put_contents($path, $pdf_content);
+            $paths[] = $path;
+            $indiceFile++;
+        }
+
+        /* creation d'un pdf unique */
+        $pdfMergeFileName = "merged-".date('YmdHis').".pdf";
+        $pathMerge = $this->_directoryList->getPath('media')."/chronopost/".$pdfMergeFileName;
+        $cmd = $this->_helperData->getConfig("chronorelais/shipping/gs_path") .' -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="'.$pathMerge.'" -dBATCH '. implode(' ', $paths);
+        $res_shell = shell_exec($cmd);
+        /* suppression des pdf temp */
+        foreach ($paths as $path) {
+            if(is_file($path)) {
+                unlink($path);
+            }
+        }
+
+        if ($res_shell === null) {
+            $resultRedirect = $this->resultRedirectFactory->create();
+            $resultRedirect->setPath("chronopost_chronorelais/sales/impression");
+            return $resultRedirect;
+        }
+        else {
+            $this->prepareDownloadResponse($pdfMergeFileName,file_get_contents($pathMerge));
+            unlink($pathMerge);
+        }
+    }
+
+    /* create folder media/chronopost if not exist */
+    protected function createMediaChronopostFolder() {
+        $path = $this->_directoryList->getPath('media').'/chronopost';
+        if(!is_dir($path)) {
+            mkdir($path,0777);
+        }
+    }
+
+    /**
+     * Verifie si ghostscript est installé
+     * @return bool
+     */
+    public function gsIsActive() {
+        $cmdTestGs = $this->_helperData->getConfig("chronorelais/shipping/gs_path") ." -v";
+        return shell_exec($cmdTestGs) !== null;
+    }
+
+
 }

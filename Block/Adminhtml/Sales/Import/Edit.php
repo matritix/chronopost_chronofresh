@@ -1,28 +1,8 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Block\Adminhtml\Sales\Import;
 
-use Magento\Backend\Block\Template;
 
-/**
- * Class Edit
- *
- * @package Chronopost\Chronorelais\Block\Adminhtml\Sales\Import
- */
-class Edit extends Template
+class Edit extends \Magento\Backend\Block\Template
 {
     protected $_template = "sales/import/edit.phtml";
     /**

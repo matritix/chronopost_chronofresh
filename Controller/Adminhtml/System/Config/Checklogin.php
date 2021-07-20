@@ -1,116 +1,93 @@
 <?php
 /**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
+ * Copyright © 2016 MageWorx. All rights reserved.
+ * See LICENSE.txt for license details.
  */
-declare(strict_types=1);
 
 namespace Chronopost\Chronorelais\Controller\Adminhtml\System\Config;
 
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
-use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Chronopost\Chronorelais\Helper\Data as HelperDataChronorelais;
 use Chronopost\Chronorelais\Helper\Webservice as HelperWebserviceChronorelais;
 
-/**
- * Class Checklogin
- *
- * @package Chronopost\Chronorelais\Controller\Adminhtml\System\Config
- */
 class Checklogin extends Action
 {
 
-    protected $resultJsonFactory;
+    protected $_resultJsonFactory;
 
     /**
      * @var HelperDataChronorelais
      */
-    protected $helperData;
+    protected $_helperData;
 
     /**
      * @var HelperWebserviceChronorelais
      */
-    protected $helperWebservice;
+    protected $_helperWebservice;
 
     /**
-     * Checklogin constructor.
-     *
-     * @param Context                      $context
-     * @param JsonFactory                  $resultJsonFactory
-     * @param HelperDataChronorelais       $helperData
-     * @param HelperWebserviceChronorelais $helperWebservice
+     * @param Context $context
+     * @param JsonFactory $resultJsonFactory
      */
     public function __construct(
         Context $context,
         JsonFactory $resultJsonFactory,
         HelperDataChronorelais $helperData,
         HelperWebserviceChronorelais $helperWebservice
-    ) {
-        $this->resultJsonFactory = $resultJsonFactory;
-        $this->helperData = $helperData;
-        $this->helperWebservice = $helperWebservice;
+    )
+    {
+        $this->_resultJsonFactory = $resultJsonFactory;
+        $this->_helperData = $helperData;
+        $this->_helperWebservice = $helperWebservice;
         parent::__construct($context);
     }
 
     /**
      * Collect relations data
      *
-     * @return Json
+     * @return \Magento\Framework\Controller\Result\Json
      */
     public function execute()
     {
         $params = $this->_request->getParams();
+
         $account_number = $params['account_number'];
         $account_pass = $params['account_pass'];
 
-        $result = $this->resultJsonFactory->create();
-
+        $result = $this->_resultJsonFactory->create();
         try {
-            if (!$account_number || !$account_pass) {
-                throw new \Exception((string)__('Please enter your account number and password'));
+
+            if(!$account_number || !$account_pass) {
+                Throw new \Exception(__("Please enter your account number and password"));
             }
 
-            if (!$this->helperData->getConfig('chronorelais/shipperinformation/country')) {
-                throw new \Exception((string)__('Please enter the addresses below'));
+            if(!$this->_helperData->getConfig("chronorelais/shipperinformation/country")) {
+                Throw new \Exception(__("Please enter the addresses below"));
             }
 
-            $WSParams = [
-                'accountNumber'  => $account_number,
-                'password'       => $account_pass,
-                'depCountryCode' => $this->helperData->getConfig('chronorelais/shipperinformation/country'),
-                'depZipCode'     => $this->helperData->getConfig('chronorelais/shipperinformation/zipcode'),
-                'arrCountryCode' => $this->helperData->getConfig('chronorelais/shipperinformation/country'),
-                'arrZipCode'     => $this->helperData->getConfig('chronorelais/shipperinformation/zipcode'),
-                'arrCity'        => $this->helperData->getConfig('chronorelais/shipperinformation/city'),
-                'type'           => 'M',
-                'weight'         => 1
-            ];
+            $WSParams = array(
+                'accountNumber' => $account_number,
+                'password' => $account_pass,
+                'depCountryCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/country"),
+                'depZipCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/zipcode"),
+                'arrCountryCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/country"),
+                'arrZipCode' => $this->_helperData->getConfig("chronorelais/shipperinformation/zipcode"),
+                'arrCity' => $this->_helperData->getConfig("chronorelais/shipperinformation/city"),
+                'type' => 'M',
+                'weight' => 1
+            );
 
-            $webservbt = (array)$this->helperWebservice->checkLogin($WSParams);
+            $webservbt = (array)$this->_helperWebservice->checkLogin($WSParams);
 
             $result->setData($webservbt);
-        } catch (\Exception $exception) {
-            $result->setData(['return' => ['errorCode' => 1, 'message' => $exception->getMessage()]]);
+        } catch (\Exception $e) {
+            $result->setData(['return' => ['errorCode' => 1, 'message' => $e->getMessage()]]);
         }
-
         return $result;
     }
 
-    /**
-     * Check if allowed
-     *
-     * @return bool
-     */
     protected function _isAllowed()
     {
         return $this->_authorization->isAllowed('Chronopost_Chronorelais::config_chronorelais');

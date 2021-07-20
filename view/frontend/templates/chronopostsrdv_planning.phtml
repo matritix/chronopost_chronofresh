@@ -1,64 +1,72 @@
 <?php
-/** @var Planning $block */
-
-use Chronopost\Chronorelais\Block\Planning;
-
-$planning = $block->getSlots();
-$slots = $planning->return->slotList;
-if (!$slots) {
+$_planning = $block->getCreneaux();
+$_creneaux = $_planning->return->slotList;
+if(!$_creneaux) {
     return;
 }
 
-// Days code from WS : 1 = Monday, ... , 7 = Sunday
-
-$week = 0;
-$slotsSort = [];
-$distinctTimeSlots = [];
-$appointmentConfig = $block->getRdvConfig();
-
-if (!is_array($slots)) {
-    $slots = [$slots];
+/**
+ * Code jours dans résultats WS :
+ * 1 = Lundi
+ * 7 = dimanche
+ **/
+ 
+$methodcode = $block->getMethodCode();
+$_srdvConfig = $block->getRdvConfig();
+if($methodcode == 'chronofreshsrdv'){
+	$_srdvConfig = $block->getRdvFreshConfig();	 
 }
 
-// Sort by hour and date
-foreach ($slots as $slot) {
-    $slot = (array)$slot;
-    $slotTime = str_pad($slot['startHour'], 2, '0', STR_PAD_LEFT) . 'h';
-    if ($slot['startMinutes']) {
-        $slotTime .= str_pad($slot['startMinutes'], 2, '0', STR_PAD_LEFT);
+
+
+$_creneauxSort = array();
+$_distinctCreneauxHoraire = array();
+$_semaine = 0;
+
+if(!is_array($_creneaux)) $_creneaux = array($_creneaux);
+
+/* trie des creneaux par heures et date */
+foreach($_creneaux as $_creneau):
+
+    $_creneau = (array)$_creneau;
+
+    $_creneauHoraire = str_pad($_creneau['startHour'], 2, '0', STR_PAD_LEFT).'h';
+    if($_creneau['startMinutes']) {
+        $_creneauHoraire .= str_pad($_creneau['startMinutes'], 2, '0', STR_PAD_LEFT);
+    }
+    $_creneauHoraire .= ' - ';
+    $_creneauHoraire .= str_pad($_creneau['endHour'], 2, '0', STR_PAD_LEFT).'h';
+    if($_creneau['endMinutes']) {
+        $_creneauHoraire .= str_pad($_creneau['endMinutes'], 2, '0', STR_PAD_LEFT);
     }
 
-    $slotTime .= ' - ';
-    $slotTime .= str_pad($slot['endHour'], 2, '0', STR_PAD_LEFT) . 'h';
-    if ($slot['endMinutes']) {
-        $slotTime .= str_pad($slot['endMinutes'], 2, '0', STR_PAD_LEFT);
+    if(!in_array($_creneauHoraire, $_distinctCreneauxHoraire)) {
+        $_distinctCreneauxHoraire[] = $_creneauHoraire;
     }
 
-    if (!in_array($slotTime, $distinctTimeSlots)) {
-        $distinctTimeSlots[] = $slotTime;
+    /* rangement des creneaux par jour */
+    if(!isset($_creneauxSort[$_creneau['deliveryDate']])) {
+        $_creneauxSort[$_creneau['deliveryDate']] = array();
     }
+    $_creneauxSort[$_creneau['deliveryDate']][$_creneauHoraire] = $_creneau;
 
-    // Sort by days
-    if (!isset($slotsSort[$slot['deliveryDate']])) {
-        $slotsSort[$slot['deliveryDate']] = [];
-    }
+endforeach;
 
-    $slotsSort[$slot['deliveryDate']][$slotTime] = $slot;
-}
+sort($_distinctCreneauxHoraire);
 
-sort($distinctTimeSlots);
-
-$slotsSortByWeek = array_chunk($slotsSort, 7, true);
+/* on scinde le tableau tous les 7 éléments (7 jours) */
+$_creneauxSortByWeek = array_chunk($_creneauxSort, 7, true);
 
 $ratePrice = $block->getCarrierBasePrice();
-for ($i = 1; $i <= 4; $i++) {
-    $appointmentConfig["N" . $i . "_price"] += $ratePrice;
+for($i = 1; $i <= 4; $i++) {
+    $_srdvConfig["N".$i."_price"] += $ratePrice;
 }
+$alreadycreneaux = array();
+// $changeslide =0;
 ?>
-
 <tr id="chronopost_srdv_planning_container" class="chronomap_container">
     <td colspan="4">
-        <?php setlocale(LC_ALL, $block->getLocale() . '.UTF-8', 'fra'); ?>
+        <?php setlocale(LC_ALL, $block->getLocale().'.UTF-8','fra'); ?>
 
         <!-- Desktop -->
         <div class="global-desktop" id="global-desktop">
@@ -70,53 +78,65 @@ for ($i = 1; $i <= 4; $i++) {
             </header>
             <div id="rdvCarousel">
                 <div id="rdvCarouselContent">
-                    <?php for ($i = 0; $i < count($slotsSortByWeek); $i++): ?>
-                        <?php $slotsSort = $slotsSortByWeek[$i]; ?>
+                    <?php for($i = 0; $i < count($_creneauxSortByWeek); $i++): ?>
+                        <?php $_creneauxSort = $_creneauxSortByWeek[$i];$alreadycreneaux = array(); ?>
                         <section class="slide content" id="content<?php echo $i ?>">
                             <table class="date-time" id="thead" width="100%">
                                 <thead>
                                 <tr class="date-row" id="date-row">
                                     <th>&nbsp;</th>
-                                    <?php foreach ($slotsSort as $_day => $slots): ?>
-                                        <th scope="col" id="th_<?php echo substr($_day, 0, 10) ?>">
+                                    <?php foreach($_creneauxSort as $_day => $_creneaux): ?>
+                                        <th scope="col" id="th_<?php echo substr($_day,0,10) ?>">
                                             <?php
                                             $_dateTime = new \DateTime($_day);
-                                            $_dateTime->setTime(12, 0, 0);
+                                            /* chgt heure pour etre sur de ne pas avoir de decalage d'une journée */
+                                            $_dateTime->setTime(12,0,0);
                                             ?>
-                                            <?php echo strftime("%A <span>%d</span> %B",
-                                                $block->getTimestamp($_dateTime->getTimestamp())); ?>
+                                            <?php echo strftime("%A <span>%d</span> %B",$block->getTimestamp($_dateTime->getTimestamp())); ?>
                                         </th>
                                     <?php endforeach; ?>
                                 </tr>
                                 </thead>
                                 <tbody>
-                                <?php foreach ($distinctTimeSlots as $time): ?>
-                                    <tr>
-                                        <th class="time-cell" scope="row"><?php echo $time; ?></th>
-                                        <?php foreach ($slotsSort as $_day => $slots): ?>
-                                            <?php if (isset($slots[$time]) && $slots[$time]["status"] != "F"): ?>
-                                                <?php $slots[$time]['meshCode'] = $planning->return->meshCode; ?>
-                                                <?php $slots[$time]['transactionID'] = $planning->return->transactionID; ?>
-                                                <td>
+                                <?php foreach($_distinctCreneauxHoraire as $_horaire): ?>
+																			<?php 
+																			
+												if(!in_array($_creneau['deliveryDate'], $alreadycreneaux)): 
+												$alreadycreneaux[] = $_creneau['deliveryDate'];
+												?>	
+                                    <tr> 
+                                        <th class="time-cell" scope="row"><?php echo __('Choisir'); ?></th>
+                                        <?php foreach($_creneauxSort as $_day => $_creneaux): ?>
+                                            <?php if(isset($_creneaux[$_horaire]) && $_creneaux[$_horaire]["status"] != "F"): ?>
+                                                <?php $_creneaux[$_horaire]['meshCode'] = $_planning->return->meshCode;?>
+                                                <?php $_creneaux[$_horaire]['transactionID'] = $_planning->return->transactionID;?>
+									
+                                                <td>			
+
                                                     <label>
                                                         <span>
-                                                            <input type="radio" name="shipping_method_chronopostsrdv"
-                                                                   class="shipping_method_chronopostsrdv"
-                                                                   value='<?php echo json_encode($slots[$time],
-                                                                       true) ?>'>
+															<?php if($methodcode == 'chronofreshsrdv'): ?>
+                                                            <input type="radio" name="shipping_method_chronofreshsrdv" class="shipping_method_chronofreshsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+															<?php else: ?>
+															<input type="radio" name="shipping_method_chronopostsrdv" class="shipping_method_chronopostsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' > 
+															<?php endif; ?>
                                                             <?php
-                                                            if ($appointmentConfig['niveauTarifaire_show'] == 1) {
-                                                                echo $block->currency($appointmentConfig[$slots[$time]['tariffLevel'] . "_price"]);
+                                                            if($_srdvConfig['niveauTarifaire_show'] == 1) {
+                                                                echo $block->currency($_srdvConfig[$_creneaux[$_horaire]['tariffLevel']."_price"]);
                                                             }
                                                             ?>
                                                         </span>
                                                     </label>
-                                                </td>
+                                                </td> 
+								
                                             <?php else: ?>
                                                 <td class="unavailable">&nbsp;</td>
                                             <?php endif; ?>
                                         <?php endforeach; ?>
-                                    </tr>
+                                    </tr>  
+													<?php 
+												endif; 
+												?>
                                 <?php endforeach; ?>
                                 </tbody>
                             </table>
@@ -125,7 +145,6 @@ for ($i = 1; $i <= 4; $i++) {
                 </div>
             </div> <!-- End #rdvCarousel -->
         </div>
-
         <!-- Mobile -->
         <div class="global-mobile" id="global-mobile">
             <header class="header">
@@ -133,16 +152,15 @@ for ($i = 1; $i <= 4; $i++) {
                 <div class="scroll">
                     <table class="date-time">
                         <tr class="date-row" id="date-row">
-                            <?php for ($i = 0; $i < count($slotsSortByWeek); $i++): ?>
-                                <?php $slotsSort = $slotsSortByWeek[$i]; ?>
-                                <?php foreach ($slotsSort as $_day => $slots): ?>
-                                    <th scope="col" id="th_<?php echo substr($_day, 0, 10) ?>">
+                            <?php for($i = 0; $i < count($_creneauxSortByWeek); $i++): ?>
+                                <?php $_creneauxSort = $_creneauxSortByWeek[$i]; ?>
+                                <?php foreach($_creneauxSort as $_day => $_creneaux): ?>
+                                    <th scope="col" id="th_<?php echo substr($_day,0,10) ?>">
                                         <?php
                                         $_dateTime = new DateTime($_day);
-                                        $_dateTime->setTime(12, 0, 0);
+                                        $_dateTime->setTime(12,0,0);
                                         ?>
-                                        <?php echo strftime("%A <span>%d</span> %B",
-                                            $block->getTimestamp($_dateTime->getTimestamp())); ?>
+                                        <?php echo strftime("%A <span>%d</span> %B",$block->getTimestamp($_dateTime->getTimestamp())); ?>
                                     </th>
                                 <?php endforeach; ?>
                             <?php endfor; ?>
@@ -153,26 +171,28 @@ for ($i = 1; $i <= 4; $i++) {
             <section class="content" id="content">
                 <div class="scroll-v" id="scroll-v">
                     <div class="time-list" id="time-list">
-                        <?php for ($i = 0; $i < count($slotsSortByWeek); $i++): ?>
-                            <?php $slotsSort = $slotsSortByWeek[$i]; ?>
+                        <?php for($i = 0; $i < count($_creneauxSortByWeek); $i++): ?>
+                            <?php $_creneauxSort = $_creneauxSortByWeek[$i]; ?>
 
-                            <?php foreach ($slotsSort as $_day => $slots): ?>
-                                <ul id="ul_<?php echo substr($_day, 0, 10) ?>" style="display:none;">
-                                    <?php foreach ($distinctTimeSlots as $time): ?>
-                                        <?php if (isset($slots[$time])): ?>
-                                            <?php $slots[$time]['meshCode'] = $planning->return->meshCode; ?>
-                                            <?php $slots[$time]['transactionID'] = $planning->return->transactionID; ?>
+                            <?php foreach($_creneauxSort as $_day => $_creneaux): ?>
+                                <ul id="ul_<?php echo substr($_day,0,10) ?>" style="display:none;">
+                                    <?php foreach($_distinctCreneauxHoraire as $_horaire): ?>
+                                        <?php if(isset($_creneaux[$_horaire])): ?>
+                                            <?php $_creneaux[$_horaire]['meshCode'] = $_planning->return->meshCode;?>
+                                            <?php $_creneaux[$_horaire]['transactionID'] = $_planning->return->transactionID;?>
                                             <li>
                                                 <label>
-                                                    <span class="time-cell"><?php echo $time; ?></span>
+                                                    <span class="time-cell"><?php echo $_horaire; ?></span>
                                                     <span class="price-cell">
-                                                            <input type="radio" name="shipping_method_chronopostsrdv"
-                                                                   class="shipping_method_chronopostsrdv"
-                                                                   value='<?php echo json_encode($slots[$time],
-                                                                       true) ?>'>
-                                                        <?php
-                                                        if ($appointmentConfig['niveauTarifaire_show'] == 1) {
-                                                            echo $block->currency($appointmentConfig[$slots[$time]['tariffLevel'] . "_price"]);
+														<?php if($methodcode == 'chronofreshsrdv'): ?>
+                                                            <input type="radio" name="<?php echo 'shipping_method_'.$methodcode; ?>" class="shipping_method_chronofreshsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+														<?php else: ?>
+															<input type="radio" name="shipping_method_chronopostsrdv" class="shipping_method_chronopostsrdv" value='<?php echo json_encode($_creneaux[$_horaire],true) ?>' >
+														<?php endif; ?>                                                  
+														
+														<?php
+                                                        if($_srdvConfig['niveauTarifaire_show'] == 1) {
+                                                            echo $block->currency($_srdvConfig[$_creneaux[$_horaire]['tariffLevel']."_price"]);
                                                         }
                                                         ?>
                                                         </span>
@@ -181,7 +201,7 @@ for ($i = 1; $i <= 4; $i++) {
                                         <?php else: ?>
                                             <li class="unavailable">
                                                 <label>
-                                                    <span class="time-cell"><?php echo $time; ?></span>
+                                                    <span class="time-cell"><?php echo $_horaire; ?></span>
                                                     <span class="price-cell"><?php echo __("not available") ?></span>
                                                 </label>
                                             </li>
@@ -189,6 +209,7 @@ for ($i = 1; $i <= 4; $i++) {
                                     <?php endforeach; ?>
                                 </ul>
                             <?php endforeach; ?>
+
                         <?php endfor; ?>
                     </div>
             </section>

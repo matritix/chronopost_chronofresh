@@ -1,8 +1,9 @@
 <script>
     require([
         'jquery'
-    ], function ($) {
-        $(document).ready(function () {
+    ], function($){
+
+        jQuery(document).ready(function(){
             var carriers_chrono = [
                 "chronopost",
                 "chronoexpress",
@@ -13,29 +14,32 @@
                 "chronorelaiseur",
                 "chronosameday",
                 "chronorelaisdom",
-                "chronopostsrdv"
+                "chronopostsrdv",
+				"chronofresh",
+				"chronofreshplus",
+				"chronofreshsameday",
+				"chronofreshsrdv"
             ];
 
             carriers_chrono.forEach(function (carrier) {
-                var contract = $('#carriers_' + carrier + '_contracts');
-                var options = $('#carriers_' + carrier + '_contracts option');
-                var select_active = $('#carriers_' + carrier + '_active');
-                if (!options || !contract) {
+                var contract = jQuery('#carriers_' + carrier + '_contracts');
+                var options = jQuery('#carriers_' + carrier + '_contracts option');
+                var select_active = jQuery('#carriers_' + carrier + '_active');
+                if(!options || !contract) {
                     return false;
                 }
-
-                if (options.length === 0) {
+                if(options.length === 0) {
                     select_active.value = 0;
                     buildTmpButton(select_active, carrier);
                     select_active.hide();
                 }
-
-                if (contract) {
+                if(contract) {
                     contract.on("change", function (e) {
                         e.stopPropagation();
                         checkConfig(select_active, carrier, e.target.value);
                     });
                 }
+
             });
         });
 
@@ -46,13 +50,13 @@
             };
 
             $.ajax({
-                url: '<?php echo $this->getBaseUrl() . "chronorelais/ajax/checkcarrierconfigcontract"; ?>',
+                url: '<?php echo $this->getBaseUrl() . "chronorelais/ajax/checkCarrierConfigContract"; ?>',
                 method: 'GET',
                 data: params,
                 showLoader: true
-            }).success(function (data) {
+            }).success(function(data) {
                 var tmp = $('#tmp-button' + carrier);
-                if (data === "not allowed") {
+                if(data === "not allowed"){
                     select_active.val("0").prop('selected', true);
                     if (tmp.length !== 0) {
                         tmp.show();
@@ -77,5 +81,6 @@
             div.innerHTML = "<input style='width:276px;' type='text' disabled value='No'/><div><strong style=\"color:#FF0000;\">Le transporteur n'est pas disponible avec le contrat spécifié.</strong></div>";
             container.append(div);
         }
+
     })
 </script>

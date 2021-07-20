@@ -1,29 +1,10 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
 
 namespace Chronopost\Chronorelais\Block\Adminhtml\Sales\Import\Edit;
 
-use Magento\Backend\Block\Widget\Form\Generic;
 use Magento\Config\Model\ResourceModel\Config\Data\CollectionFactory;
 
-/**
- * Class Form
- *
- * @package Chronopost\Chronorelais\Block\Adminhtml\Sales\Import\Edit
- */
-class Form extends Generic
+class Form extends \Magento\Backend\Block\Widget\Form\Generic
 {
 
     /**
@@ -118,7 +99,7 @@ class Form extends Generic
                 'label' => __('Import file'),
                 'title' => __('Import file'),
                 'required' => true,
-                'note' => __('Line format: Order increment Id, tracking number')
+                'note' => __('Line format: Order_id,tracking number')
             ]
         );
 

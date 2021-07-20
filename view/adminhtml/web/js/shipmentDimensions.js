@@ -1,35 +1,36 @@
-require([
-    'jquery'
-], function ($) {
-    'use strict';
-    var fn = function () {
-        buildDimensionsJson();
+require(['jquery'],
 
-        $(".adminhtml-order_shipment-new #edit_form, .adminhtml-order-shipment-new #edit_form").on('save', function (e) {
-            buildDimensionsJson();
-            return false;
-        });
+    function ($) {
+        'use strict';
+        var fn =  function () {
 
-        function buildDimensionsJson() {
-            var dimensions = {};
+                buildDimensionsJson();
 
-            var weights = $('.dimensions-input-container input[name="weight_input"]');
-            var widths = $('.dimensions-input-container input[name="width_input"]');
-            var heights = $('.dimensions-input-container input[name="height_input"]');
-            var lengths = $('.dimensions-input-container input[name="length_input"]');
+                $(".adminhtml-order_shipment-new #edit_form, .adminhtml-order-shipment-new #edit_form").on('save', function(e){
+                    buildDimensionsJson();
+                    return false;
+                });
 
-            for (var i = 0; i < weights.length; i++) {
-                var dimension = {};
-                dimension.weight = $(weights[i]).val();
-                dimension.width = $(widths[i]).val();
-                dimension.height = $(heights[i]).val();
-                dimension.length = $(lengths[i]).val();
-                dimensions[i] = dimension;
-            }
+                function buildDimensionsJson() {
+                    var dimensions = {};
 
-            $('#input_dimensions').val(JSON.stringify(dimensions));
-        }
-    };
+                    var weights = jQuery('.dimensions-input-container input[name="weight_input"]');
+                    var widths = jQuery('.dimensions-input-container input[name="width_input"]');
+                    var heights = jQuery('.dimensions-input-container input[name="height_input"]');
+                    var lengths = jQuery('.dimensions-input-container input[name="length_input"]');
 
-    fn();
-});
+                    for (var i = 0; i < weights.length; i++) {
+                        var dimension = {};
+                        dimension.weight = jQuery(weights[i]).val();
+                        dimension.width = jQuery(widths[i]).val();
+                        dimension.height = jQuery(heights[i]).val();
+                        dimension.length = jQuery(lengths[i]).val();
+                        dimensions[i] = dimension;
+                    }
+                    jQuery('#input_dimensions').val(JSON.stringify(dimensions));
+                }
+        };
+
+        fn();
+    }
+);

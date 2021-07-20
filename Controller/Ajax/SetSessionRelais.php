@@ -1,117 +1,94 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Controller\Ajax;
 
-use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
-use Magento\Framework\App\ResponseInterface;
-use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Chronopost\Chronorelais\Helper\Webservice as HelperWebservice;
-use Magento\Framework\Controller\ResultInterface;
 
-/**
- * Class SetSessionRelais
- *
- * @package Chronopost\Chronorelais\Controller\Ajax
- */
-class SetSessionRelais extends Action
+class setSessionRelais extends \Magento\Framework\App\Action\Action
 {
 
     /**
      * @var JsonFactory
      */
-    protected $resultJsonFactory;
+    protected $_resultJsonFactory;
 
     /**
      * @var CheckoutSession
      */
-    protected $checkoutSession;
+    protected $_checkoutSession;
 
     /**
      * @var HelperWebservice
      */
-    protected $helperWebservice;
+    protected $_helperWebservice;
 
     /**
-     * SetSessionRelais constructor.
-     *
-     * @param Context          $context
-     * @param JsonFactory      $jsonFactory
-     * @param CheckoutSession  $checkoutSession
-     * @param HelperWebservice $webservice
+     * setSessionRelais constructor.
+     * @param Context $context
+     * @param JsonFactory $jsonFactory
+     * @param CheckoutSession $checkoutSession
      */
     public function __construct(
         Context $context,
         JsonFactory $jsonFactory,
         CheckoutSession $checkoutSession,
         HelperWebservice $webservice
-    ) {
+    )
+    {
         parent::__construct($context);
-        $this->resultJsonFactory = $jsonFactory;
-        $this->checkoutSession = $checkoutSession;
-        $this->helperWebservice = $webservice;
+        $this->_resultJsonFactory = $jsonFactory;
+        $this->_checkoutSession = $checkoutSession;
+        $this->_helperWebservice = $webservice;
     }
 
     /**
-     * Reset value session
-     *
-     * @return ResponseInterface|Json|ResultInterface
+     * Reset le point relais en session
+     * @return \Magento\Framework\Controller\Result\Json
      */
     public function execute()
     {
+        /* set session relais */
         $relaisId = $this->getRequest()->getParam('relais_id');
 
         try {
-            $relais = $this->helperWebservice->getDetailRelaisPoint($relaisId);
-            if ($relais) {
-                $relaisidbefore = $this->checkoutSession->getData("chronopost_chronorelais_relais_id");
-                $this->checkoutSession->setData("chronopost_chronorelais_relais_id", $relaisId);
-                $relaisidafter = $this->checkoutSession->getData("chronopost_chronorelais_relais_id");
+            $relais = $this->_helperWebservice->getDetailRelaisPoint($relaisId);
+            if($relais) {
+                $relaisidbefore = $this->_checkoutSession->getData("chronopost_chronorelais_relais_id");
+                $this->_checkoutSession->setData("chronopost_chronorelais_relais_id",$relaisId);
+                $relaisidafter = $this->_checkoutSession->getData("chronopost_chronorelais_relais_id");
 
-                if (isset($relais->nom)) {
+                if(isset($relais->nom) ){
                     $nom = $relais->nom;
-                } else {
-                    $nom = $relais->nomEnseigne;
+                }else{
+                    $nom =  $relais->nomEnseigne;
                 }
 
-                $data = [
-                    "success"          => true,
+
+                $data = array(
+                    "success" => true,
                     "relais_id_before" => $relaisidbefore,
-                    "relais_id_after"  => $relaisidafter,
-                    "relais"           => [
-                        "city"              => $relais->localite,
-                        "postcode"          => $relais->codePostal,
-                        "street"            => [$relais->adresse1, $relais->adresse2, $relais->adresse3],
-                        "company"           => $nom,
+                    "relais_id_after" => $relaisidafter,
+                    "relais" => array(
+                        "city" => $relais->localite,
+                        "postcode" => $relais->codePostal,
+                        "street" => array($relais->adresse1,$relais->adresse2,$relais->adresse3),
+                        "company" => $nom,
                         "saveInAddressBook" => 0,
-                        "sameAsBilling"     => 0
-                    ]
-                ];
+                        "sameAsBilling" => 0
+                    )
+                );
             } else {
-                $data = ["error" => true, "message" => __("The pick-up point does not exist.")];
+                $data = array("error" => true,"message" => __("The pick-up point does not exist."));
             }
-        } catch (\Exception $e) {
-            $data = ["error" => true, "message" => __($e->getMessage())];
+        } catch(\Exception $e) {
+            $data = array("error" => true,"message" => __($e->getMessage()));
         }
 
-        $result = $this->resultJsonFactory->create();
-        $result->setData($data);
 
+        $result = $this->_resultJsonFactory->create();
+        $result->setData($data);
         return $result;
     }
 }

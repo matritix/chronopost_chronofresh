@@ -1,49 +1,22 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Block\Adminhtml\System\Config;
 
 use Magento\Backend\Block\Template\Context;
 use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Framework\Data\Form\Element\AbstractElement;
 use Chronopost\Chronorelais\Helper\Data;
-use Magento\Framework\Phrase;
 
-/**
- * Class Contracts
- *
- * @package Chronopost\Chronorelais\Block\Adminhtml\System\Config
- */
 class Contracts extends Field
 {
     /**
      * @var string
      */
     protected $_template = 'Chronopost_Chronorelais::system/config/contracts.phtml';
-
-    /**
-     * @var Data
-     */
     public $helper;
 
     /**
-     * Contracts constructor.
-     *
      * @param Context $context
-     * @param Data    $helper
-     * @param array   $data
+     * @param array $data
      */
     public function __construct(
         Context $context,
@@ -57,18 +30,17 @@ class Contracts extends Field
     /**
      * Return element html
      *
-     * @param AbstractElement $element
-     *
+     * @param  AbstractElement $element
      * @return string
      */
     protected function _getElementHtml(AbstractElement $element)
     {
-        return parent::_getElementHtml($element) . $this->_toHtml();
+        return parent::_getElementHtml($element).$this->_toHtml();
     }
-
     /**
      * Return element html
      *
+     * @param  AbstractElement $element
      * @return string
      */
     public function getConfigContracts()
@@ -76,35 +48,27 @@ class Contracts extends Field
         return $this->helper->getConfigContracts();
     }
 
-    /**
-     * @return string
-     */
     public function getAjaxUrl()
     {
-        return $this->getUrl('chronorelais/system_config/checklogin');
+        return $this->getUrl('chronopost_chronorelais/system_config/checklogin');
     }
 
-    /**
-     * @return Phrase
-     */
     public function getLabelButtonDelete()
     {
-        return __("Delete contract");;
+        return __("Delete contract"); ;
     }
 
-    /**
-     * @return Phrase
-     */
     public function getLabelButtonCheck()
     {
-        return __("Check contract");;
+        return __("Check contract"); ;
     }
 
-    /**
-     * @return Phrase
-     */
     public function getLabelButtonCreate()
     {
-        return __("Add contract");;
+        return __("Add contract"); ;
     }
+
+
+
+
 }

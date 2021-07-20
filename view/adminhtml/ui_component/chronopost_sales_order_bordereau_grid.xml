@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
 <listing xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
     <argument name="data" xsi:type="array">
+
+        <!-- Custom tempaltes pour ajouter une phrases -->
         <item name="template" xsi:type="string" translate="true">templates/listing/bordereau_grid</item>
         <item name="phrase_top" xsi:type="string" translate="true">Do not forget to print the remittance slip in two copies, one must be delivered at the time of removal or deposit, the other is to be preserved. Both must be signed.</item>
+
         <item name="js_config" xsi:type="array">
             <item name="provider" xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid_data_source</item>
             <item name="deps" xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid_data_source</item>
         </item>
-        <item name="spinner" xsi:type="string">chronopost_sales_order_bordereau_columns</item>
+        <item name="spinner" xsi:type="string">sales_order_columns</item>
         <item name="buttons" xsi:type="array" />
     </argument>
     <dataSource name="chronopost_sales_order_bordereau_grid_data_source">
@@ -27,32 +36,10 @@
     <listingToolbar name="listing_top">
         <argument name="data" xsi:type="array">
             <item name="config" xsi:type="array">
-                <item name="template" xsi:type="string">ui/grid/toolbar</item>
-                <item name="stickyTmpl" xsi:type="string">ui/grid/sticky/toolbar</item>
+                <item name="sticky" xsi:type="boolean">true</item>
             </item>
         </argument>
-        <bookmark name="bookmarks">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="storageConfig" xsi:type="array">
-                        <item name="namespace" xsi:type="string">chronopost_sales_order_bordereau_grid</item>
-                    </item>
-                </item>
-            </argument>
-        </bookmark>
-        <component name="columns_controls">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="columnsData" xsi:type="array">
-                        <item name="provider"
-                              xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_columns
-                        </item>
-                    </item>
-                    <item name="component" xsi:type="string">Magento_Ui/js/grid/controls/columns</item>
-                    <item name="displayArea" xsi:type="string">dataGridActions</item>
-                </item>
-            </argument>
-        </component>
+        <columnsControls name="columns_controls"/>
         <filters name="listing_filters">
             <filterSelect name="store_id">
                 <argument name="optionsProvider" xsi:type="configurableObject">
@@ -60,15 +47,13 @@
                 </argument>
                 <argument name="data" xsi:type="array">
                     <item name="config" xsi:type="array">
-                        <item name="columnsProvider"
-                              xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_columns
+                        <item name="provider" xsi:type="string">${ $.parentName }</item>
+                        <item name="imports" xsi:type="array">
+                            <item name="visible" xsi:type="string">ns = ${ $.ns }, componentType = column, index = ${ $.index }:visible</item>
                         </item>
-                        <item name="storageConfig" xsi:type="array">
-                            <item name="provider"
-                                  xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.listing_top.bookmarks
-                            </item>
-                            <item name="namespace" xsi:type="string">current.filters</item>
-                        </item>
+                        <item name="caption" xsi:type="string" translate="true">All Store Views</item>
+                        <item name="dataScope" xsi:type="string">store_id</item>
+                        <item name="label" xsi:type="string" translate="true">Purchase Point</item>
                     </item>
                 </argument>
             </filterSelect>
@@ -84,49 +69,19 @@
                     <item name="config" xsi:type="array">
                         <item name="type" xsi:type="string">imprimer_bordereau</item>
                         <item name="label" xsi:type="string" translate="true">Print slip</item>
-                        <item name="url" xsi:type="url" path="chronorelais/sales/bordereau_printBordereau"/>
+                        <item name="url" xsi:type="url" path="chronopost_chronorelais/sales/bordereau_printBordereau"/>
                     </item>
                 </argument>
             </action>
         </massaction>
-        <paging name="listing_paging">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="storageConfig" xsi:type="array">
-                        <item name="provider"
-                              xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.listing_top.bookmarks
-                        </item>
-                        <item name="namespace" xsi:type="string">current.paging</item>
-                    </item>
-                    <item name="selectProvider"
-                          xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_columns.ids
-                    </item>
-                </item>
-            </argument>
-        </paging>
+        <paging name="listing_paging"/>
     </listingToolbar>
-    <columns name="chronopost_sales_order_bordereau_columns">
+    <columns name="sales_order_columns">
         <argument name="data" xsi:type="array">
             <item name="config" xsi:type="array">
-                <!-- Bookmarks behaviour -->
-                <item name="storageConfig" xsi:type="array">
-                    <item name="provider"
-                          xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.listing_top.bookmarks
-                    </item>
-                    <item name="namespace" xsi:type="string">current</item>
-                </item>
-
                 <item name="childDefaults" xsi:type="array">
-                    <item name="controlVisibility" xsi:type="boolean">true</item>
-                    <item name="storageConfig" xsi:type="array">
-                        <item name="provider"
-                              xsi:type="string">chronopost_sales_order_bordereau_grid.chronopost_sales_order_bordereau_grid.listing_top.bookmarks
-                        </item>
-                        <item name="root" xsi:type="string">columns.${ $.index }</item>
-                        <item name="namespace" xsi:type="string">current.${ $.storageConfig.root}</item>
-                    </item>
                     <item name="fieldAction" xsi:type="array">
-                        <item name="provider" xsi:type="string">sales_order_grid.sales_order_grid.chronopost_sales_order_grid_bordereau_columns.actions</item>
+                        <item name="provider" xsi:type="string">sales_order_grid.sales_order_grid.sales_order_columns.actions</item>
                         <item name="target" xsi:type="string">applyAction</item>
                         <item name="params" xsi:type="array">
                             <item name="0" xsi:type="string">view</item>
@@ -259,35 +214,11 @@
                 </item>
             </argument>
         </column>
-        <column name="force_saturday_option" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOption">
+        <column name="livraison_le_samedi" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\LivraisonSamedi">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="filter" xsi:type="string">text</item>
-                    <item name="label" xsi:type="string" translate="true">Delivery on Saturday (customer choice)</item>
-                    <item name="visible" xsi:type="boolean">false</item>
-                </item>
-            </argument>
-        </column>
-        <column name="force_saturday_option_export" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOptionExport">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="component" xsi:type="string">Magento_Ui/js/grid/columns/thumbnail</item>
-                    <item name="filter" xsi:type="string">text</item>
-                    <item name="label" xsi:type="string" translate="true">Delivery on Saturday (admin value)</item>
-                    <item name="altField" xsi:type="string">name</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
-                    <item name="visible" xsi:type="boolean">false</item>
-                </item>
-            </argument>
-        </column>
-        <column name="force_saturday_option_generated" class="Chronopost\Chronorelais\Ui\Component\Listing\Column\SaturdayOptionGenerated">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="component" xsi:type="string">Magento_Ui/js/grid/columns/thumbnail</item>
                     <item name="filter" xsi:type="string">text</item>
                     <item name="label" xsi:type="string" translate="true">Delivery on Saturday</item>
-                    <item name="altField" xsi:type="string">name</item>
-                    <item name="bodyTmpl" xsi:type="string">ui/grid/cells/html</item>
                 </item>
             </argument>
         </column>

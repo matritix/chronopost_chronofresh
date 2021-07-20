@@ -1,137 +1,98 @@
 <?php
-/**
- * Chronopost
- *
- * DISCLAIMER
- *
- * Do not edit or add to this file if you wish to upgrade this extension to newer
- * version in the future.
- *
- * @category  Chronopost
- * @package   Chronopost_Chronorelais
- * @copyright Copyright (c) 2021 Chronopost
- */
-declare(strict_types=1);
-
 namespace Chronopost\Chronorelais\Model\Carrier;
 
-use Chronopost\Chronorelais\Helper\Data;
-use Chronopost\Chronorelais\Helper\Webservice as HelperWebservice;
-use Exception;
-use Magento\Checkout\Model\Session as CheckoutSession;
-use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Quote\Model\Quote\Address\RateRequest;
-use Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory;
-use Magento\Quote\Model\Quote\Address\RateResult\Method;
-use Magento\Quote\Model\Quote\Address\RateResult\MethodFactory;
-use Magento\Shipping\Model\Carrier\AbstractCarrier;
-use Magento\Shipping\Model\Carrier\CarrierInterface;
 use Magento\Shipping\Model\Rate\Result;
-use Magento\Shipping\Model\Rate\ResultFactory;
-use Magento\Shipping\Model\Tracking\Result\StatusFactory;
-use Magento\Shipping\Model\Tracking\ResultFactory as TrackingResultFactory;
-use Psr\Log\LoggerInterface;
 
-/**
- * Class AbstractChronopost
- *
- * @package Chronopost\Chronorelais\Model\Carrier
- * @SuppressWarnings("CouplingBetweenObjects")
- * @SuppressWarnings(PHPMD.CookieAndSessionMisuse)
- */
-abstract class AbstractChronopost extends AbstractCarrier implements CarrierInterface
+use Chronopost\Chronorelais\Helper\Webservice as HelperWebservice;
+
+abstract class AbstractChronopost extends \Magento\Shipping\Model\Carrier\AbstractCarrier implements
+    \Magento\Shipping\Model\Carrier\CarrierInterface
 {
+    /**
+     * @var string
+     */
+    //protected $_code = 'chronopost';
+    protected $_debugData = array();
+
+    /* verifier le fonctionnement du WS relai */
     const CHECK_RELAI_WS = false;
+
+    /* verifier que le mode fait partie du contrat du client */
     const CHECK_CONTRACT = false;
+
     const PRODUCT_CODE = '';
     const PRODUCT_CODE_STR = '';
+
+    /* option boite au lettre disponible pour ce mode */
     const OPTION_BAL_ENABLE = false;
     const PRODUCT_CODE_BAL = '';
     const PRODUCT_CODE_BAL_STR = '';
-    const DELIVER_ON_SATURDAY = false;
 
-    protected $debugData = [];
+    /* autoriser la livraison le samedi */
+    const DELIVER_ON_SATURDAY = false;
 
     /**
      * @var HelperWebservice
      */
-    protected $helperWebservice;
+    protected $_helperWebservice;
 
     /**
-     * @var $helperData
+     * @var $_helperData
      */
-    protected $helperData;
+    protected $_helperData;
 
     /**
-     * @var ResultFactory
+     * @var \Magento\Shipping\Model\Rate\ResultFactory
      */
-    protected $rateResultFactory;
+    protected $_rateResultFactory;
 
     /**
-     * @var MethodFactory
+     * @var \Magento\Quote\Model\Quote\Address\RateResult\MethodFactory
      */
-    protected $rateMethodFactory;
+    protected $_rateMethodFactory;
 
     /**
-     * @var TrackingResultFactory
+     * @var \Magento\Shipping\Model\Tracking\ResultFactory
      */
-    protected $trackFactory;
+    protected $_trackFactory;
 
     /**
-     * @var StatusFactory
+     * @var \Magento\Shipping\Model\Tracking\Result\StatusFactory
      */
-    protected $trackStatusFactory;
+    protected $_trackStatusFactory;
 
-    /**
-     * @var SerializerInterface
-     */
-    private $jsonSerializer;
-
-    /**
-     * @var CheckoutSession
-     */
-    protected $checkoutSession;
 
     /**
      * Chronopost constructor.
-     *
-     * @param ScopeConfigInterface  $scopeConfig
-     * @param ErrorFactory          $rateErrorFactory
-     * @param LoggerInterface       $logger
-     * @param ResultFactory         $rateResultFactory
-     * @param MethodFactory         $rateMethodFactory
-     * @param HelperWebservice      $helperWebservice
-     * @param TrackingResultFactory $trackFactory
-     * @param StatusFactory         $trackStatusFactory
-     * @param Data                  $helperData
-     * @param SerializerInterface   $jsonSerializer
-     * @param CheckoutSession       $checkoutSession
-     * @param array                 $data
-     * @SuppressWarnings(PHPMD.ExcessiveParameterList)
+     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+     * @param \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory
+     * @param \Psr\Log\LoggerInterface $logger
+     * @param \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory
+     * @param \Magento\Quote\Model\Quote\Address\RateResult\MethodFactory $rateMethodFactory
+     * @param $
+     * @param HelperWebservice $helperWebservice
+     * @param HelperData $helperData
+     * @param array $data
      */
     public function __construct(
-        ScopeConfigInterface $scopeConfig,
-        ErrorFactory $rateErrorFactory,
-        LoggerInterface $logger,
-        ResultFactory $rateResultFactory,
-        MethodFactory $rateMethodFactory,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        \Magento\Quote\Model\Quote\Address\RateResult\ErrorFactory $rateErrorFactory,
+        \Psr\Log\LoggerInterface $logger,
+        \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory,
+        \Magento\Quote\Model\Quote\Address\RateResult\MethodFactory $rateMethodFactory,
         HelperWebservice $helperWebservice,
-        TrackingResultFactory $trackFactory,
-        StatusFactory $trackStatusFactory,
-        Data $helperData,
-        SerializerInterface $jsonSerializer,
-        CheckoutSession $checkoutSession,
+        \Magento\Shipping\Model\Tracking\ResultFactory $trackFactory,
+        \Magento\Shipping\Model\Tracking\Result\StatusFactory $trackStatusFactory,
+        \Chronopost\Chronorelais\Helper\Data $helperData,
         array $data = []
     ) {
-        $this->rateResultFactory = $rateResultFactory;
-        $this->rateMethodFactory = $rateMethodFactory;
-        $this->helperWebservice = $helperWebservice;
-        $this->trackFactory = $trackFactory;
-        $this->trackStatusFactory = $trackStatusFactory;
-        $this->helperData = $helperData;
-        $this->jsonSerializer = $jsonSerializer;
-        $this->checkoutSession = $checkoutSession;
+        $this->_rateResultFactory = $rateResultFactory;
+        $this->_rateMethodFactory = $rateMethodFactory;
+        $this->_helperWebservice = $helperWebservice;
+        $this->_trackFactory = $trackFactory;
+        $this->_trackStatusFactory = $trackStatusFactory;
+        $this->_helperData = $helperData;
         parent::__construct($scopeConfig, $rateErrorFactory, $logger, $data);
     }
 
@@ -146,80 +107,65 @@ abstract class AbstractChronopost extends AbstractCarrier implements CarrierInte
     }
 
     /**
-     * Get tracking informations
-     *
      * @param $tracking
-     *
      * @return mixed
      */
     public function getTrackingInfo($tracking)
     {
         $tracking_url = $this->_scopeConfig->getValue('chronorelais/shipping/tracking_view_url');
-        $tracking_url = str_replace('{tracking_number}', $tracking, $tracking_url);
+        $tracking_url = str_replace('{tracking_number}',$tracking,$tracking_url);
 
-        $status = $this->trackStatusFactory->create();
+        $status = $this->_trackStatusFactory->create();
         $status->setCarrier($this->_code);
         $status->setCarrierTitle($this->getConfigData('title'));
         $status->setTracking($tracking);
         $status->setPopup(1);
         $status->setUrl($tracking_url);
-
         return $status;
     }
 
     /**
-     * Get chronopost product code
-     *
      * @return string
      */
-    public function getChronoProductCodeStr()
-    {
-        return static::PRODUCT_CODE_STR;
-    }
-
-    /**
-     * Get chronopost product code to shipment
-     *
-     * @return string
-     */
-    public function getChronoProductCodeToShipment()
-    {
-        if (static::OPTION_BAL_ENABLE && $this->_scopeConfig->getValue("chronorelais/optionbal/enabled")) {
-            return static::PRODUCT_CODE_BAL;
-        }
-
+    public function getChronoProductCode() {
         return static::PRODUCT_CODE;
     }
 
     /**
-     * Get chronopost product code (str) to shipment
-     *
      * @return string
      */
-    public function getChronoProductCodeToShipmentStr()
-    {
-        if (static::OPTION_BAL_ENABLE && $this->_scopeConfig->getValue("chronorelais/optionbal/enabled")) {
-            return static::PRODUCT_CODE_BAL_STR;
-        }
-
+    public function getChronoProductCodeStr() {
         return static::PRODUCT_CODE_STR;
     }
 
     /**
-     * Check if option is enable
-     *
-     * @return bool
+     * @return string
      */
-    public function optionBalEnable()
-    {
+    public function getChronoProductCodeToShipment() {
+        if(static::OPTION_BAL_ENABLE && $this->_scopeConfig->getValue("chronorelais/optionbal/enabled")) {
+            return static::PRODUCT_CODE_BAL;
+        }
+        return static::PRODUCT_CODE;
+    }
+
+    /**
+     * @return string
+     */
+    public function getChronoProductCodeToShipmentStr() {
+        if(static::OPTION_BAL_ENABLE && $this->_scopeConfig->getValue("chronorelais/optionbal/enabled")) {
+            return static::PRODUCT_CODE_BAL_STR;
+        }
+        return static::PRODUCT_CODE_STR;
+    }
+
+    public function optionBalEnable() {
         return static::OPTION_BAL_ENABLE && $this->_scopeConfig->getValue("chronorelais/optionbal/enabled");
     }
 
     /**
      * @return bool
      */
-    public function canDeliverOnSaturday()
-    {
+    public function canDeliverOnSaturday() {
         return static::DELIVER_ON_SATURDAY === true;
     }
 
@@ -231,23 +177,12 @@ abstract class AbstractChronopost extends AbstractCarrier implements CarrierInte
         return [$this->_code => $this->getConfigData('name')];
     }
 
-    /**
-     * Check if chronopost method
-     *
-     * @return bool
-     */
-    public function getIsChronoMethod()
-    {
+    public function getIsChronoMethod() {
         return true;
     }
 
     /**
-     * Collect rates
-     *
      * @param RateRequest $request
-     *
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     * @SuppressWarnings(PHPMD.NPathComplexity)
      * @return bool|Result
      */
     public function collectRates(RateRequest $request)
@@ -256,113 +191,119 @@ abstract class AbstractChronopost extends AbstractCarrier implements CarrierInte
             return false;
         }
 
-        $this->debugData = [];
-        $this->debugData['request'] = [];
-        $this->debugData['error'] = [];
-        $this->debugData['request']['code'] = $this->_code;
+        $this->_debugData = [];
+        $this->_debugData['request'] = array();
+        $this->_debugData['error'] = array();
+        $this->_debugData['request']['code'] = $this->_code;
 
-        /** @var Result $result */
-        $result = $this->rateResultFactory->create();
+        /** @var \Magento\Shipping\Model\Rate\Result $result */
+        $result = $this->_rateResultFactory->create();
 
         $cartWeight = $this->checkCartWeight($request);
-        $this->debugData['request']['cart_weight'] = $cartWeight;
-        if ($cartWeight === false) {
-            $this->_debug($this->debugData);
-
+        $this->_debugData['request']['cart_weight'] = $cartWeight;
+        if($cartWeight === false) {
+            $this->_debug($this->_debugData);
             return false;
         }
 
-        if ($request->getDestPostcode() === null) {
-            $this->_debug($this->debugData);
-
+        if($request->getDestCountryId() === 'FR' && $this->_code == 'chronoexpress') {
+            $this->_debug($this->_debugData);
             return false;
         }
 
-        if ($request->getDestCountryId() === 'FR' && $this->_code == 'chronoexpress') {
-            $this->_debug($this->debugData);
-
+        if($request->getDestCountryId() !== 'FR' && in_array($this->_code,array('chronorelais', 'chronopostc10', 'chronopost', 'chronopostc18'))) {
+            $this->_debug($this->_debugData);
             return false;
         }
 
-        if ($request->getDestCountryId() !== 'FR'
-            && in_array($this->_code, ['chronorelais', 'chronopostc10', 'chronopost', 'chronopostc18'])) {
-            $this->_debug($this->debugData);
-
+        if(!$this->validateMethod($request)) {
+            $this->_debug($this->_debugData);
             return false;
         }
 
-        if (!$this->validateMethod($request)) {
-            $this->_debug($this->debugData);
-
+        $shippingPrice = $this->getShippingPrice($request,$cartWeight);
+        $this->_debugData['request']['shipping_price'] = $shippingPrice;
+        if($shippingPrice === false) {
+            $this->_debug($this->_debugData);
             return false;
         }
 
-        $shippingPrice = $this->getShippingPrice($request, $cartWeight);
-        $this->debugData['request']['shipping_price'] = $shippingPrice;
-        if ($shippingPrice === false) {
-            $this->_debug($this->debugData);
-
-            return false;
-        }
-
-        // Application fees
+        /* Frais de dossier */
         $applicationFee = $this->getConfigData('application_fee');
-        if ($applicationFee) {
-            $this->debugData['request']['application_fee'] = $applicationFee;
+        if($applicationFee) {
+            $this->_debugData['request']['application_fee'] = $applicationFee;
             $shippingPrice += $applicationFee;
         }
 
-        // Processing fee
+        /* Frais de traitement */
         $handlingFee = $this->getConfigData('handling_fee');
-        if ($handlingFee) {
-            $this->debugData['request']['handling_fee'] = $handlingFee;
+        if($handlingFee) {
+            $this->_debugData['request']['handling_fee'] = $handlingFee;
             $shippingPrice += $handlingFee;
         }
 
         $shippingPrice = $this->additionalPrice($shippingPrice);
-        $this->debugData['request']['shipping_price_total'] = $shippingPrice;
 
-        // Freeshipping
+        $this->_debugData['request']['shipping_price_total'] = $shippingPrice;
+
+        /* Freeshipping */
         $freeShippingEnable = $this->getConfigData('free_shipping_enable');
         $freeShippingSubtotal = $this->getConfigData('free_shipping_subtotal');
         $cartTotal = $request->getBaseSubtotalInclTax();
 
-        $this->debugData['request']['free_shipping_enable'] = (int)$freeShippingEnable;
-        $this->debugData['request']['free_shipping_subtotal'] = (int)$freeShippingSubtotal;
+        $this->_debugData['request']['free_shipping_enable'] = (int)$freeShippingEnable;
+        $this->_debugData['request']['free_shipping_subtotal'] = (int)$freeShippingSubtotal;
 
-        if ($freeShippingEnable && $freeShippingSubtotal <= $cartTotal) {
+        if($freeShippingEnable && $freeShippingSubtotal<=$cartTotal) {
             $shippingPrice = 0;
         }
 
-        /** @var Method $method */
-        $method = $this->rateMethodFactory->create();
+        /** @var \Magento\Quote\Model\Quote\Address\RateResult\Method $method */
+        $method = $this->_rateMethodFactory->create();
+
         $method->setCarrier($this->_code);
         $method->setCarrierTitle($this->getConfigData('title'));
+
         $method->setMethod($this->_code);
+
         $method->setMethodTitle($this->getMethodTitle());
-        $method->setDescription($this->getConfigData('description'));
+
         $method->setPrice($shippingPrice);
         $method->setCost($shippingPrice);
+
         $result->append($method);
 
-        $this->_debug($this->debugData);
+        $this->_debug($this->_debugData);
 
         return $result;
     }
 
     /**
-     * Checks if all product weights are below the weight limit
-     *
+     * Methode surcahrgé dans les autres mode si besoin d'un prix supplémentaire
+     * @param $price
+     * @return mixed
+     */
+    public function additionalPrice($price) {
+        return $price;
+    }
+
+    /**
+     * @return false|string
+     */
+    public function getMethodTitle() {
+        return $this->getConfigData('name');
+    }
+
+    /**
+     * Verifie si tous les poids des produits sont en dessous du poids limite
      * @param RateRequest $request
-     *
      * @return bool|float|int
      */
-    protected function checkCartWeight(RateRequest $request)
-    {
-        $weightLimit = $this->getConfigData('weight_limit');
-        $weightUnit = $this->_scopeConfig->getValue('chronorelais/weightunit/unit');
+    protected function checkCartWeight(RateRequest $request) {
+        $weight_limit = $this->getConfigData('weight_limit'); /* weight_limit in kg */
+        $weight_unit = $this->_scopeConfig->getValue("chronorelais/weightunit/unit");
 
-        $cartWeight = 0;
+        $cart_weight = 0;
         if ($request->getAllItems()) {
             foreach ($request->getAllItems() as $item) {
                 if ($item->getProduct()->isVirtual() || $item->getParentItem()) {
@@ -370,146 +311,152 @@ abstract class AbstractChronopost extends AbstractCarrier implements CarrierInte
                 }
 
                 $itemWeight = $item->getWeight();
-                if ($weightUnit === 'g') {
+                if($weight_unit == 'g')
+                {
                     $itemWeight = $itemWeight / 1000; // conversion g => kg
                 }
-
-                if ($itemWeight > $weightLimit) {
-                    $this->debugData['error'][] = __('Weight of products greater than the maximum weight');
-
+                if($itemWeight > $weight_limit) {
+                    $this->_debugData['error'][] = "Poids d'un produit > au poids max";
                     return false;
                 }
-
-                $cartWeight += $itemWeight * $item->getQty();
+                $cart_weight += $itemWeight * $item->getQty();
             }
         }
-
-        return $cartWeight;
+        return $cart_weight;
     }
 
     /**
-     * Additional conditions to show shipping method, each shipping method model might have their own validateMethod
-     * function
-     *
-     * @param RateRequest $request
-     *
+     * Additional conditions to show shipping method, each shipping method model might have their own validateMethod function
      * @return bool
      */
-    public function validateMethod(RateRequest $request)
-    {
-        // Test if the webservice is available
-        if (static::CHECK_RELAI_WS) {
-            $webservice = $this->helperWebservice->getPointsRelaisByCp($request->getDestPostcode());
-            if ($webservice === false) {
-                $this->debugData['error'][] = "The webservice does not respond";
-
+    public function validateMethod(RateRequest $request) {
+        /* Chronorelais => test Si WS fonctionne */
+		//nimp
+		     return true;
+		
+		
+        if(static::CHECK_RELAI_WS) {
+            $webservice = $this->_helperWebservice->getPointsRelaisByCp($request->getDestPostcode());
+            if($webservice === false) {
+                $this->_debugData['error'][] = "WS chronorelais ne répond pas";
                 return false;
             }
         }
 
-        // Checks if this mode is present in the customer's contract
-        if (static::CHECK_CONTRACT) {
-            $methodIsAllowed = $this->helperWebservice->getMethodIsAllowed($this->getChronoProductCode(), $request);
-            if ($methodIsAllowed === false) {
-                $this->debugData['error'][] = sprintf(
-                    "Method %s (%s) not present in the contract",
-                    $this->_code,
-                    $this->getChronoProductCode()
-                );
-
+        /* verifie si ce mode est present dans le contrat du client */
+        if(static::CHECK_CONTRACT) {
+            $isAllowed = $this->_helperWebservice->getMethodIsAllowed($this->getChronoProductCode(),$request);
+            if($isAllowed === false) {
+                $this->_debugData['error'][] = "Méthode ".$this->_code." (".$this->getChronoProductCode().") non présente dans le contrat";
                 return false;
             } else {
-                $this->debugData['success'][] = sprintf("Method %s present in the contract", $this->_code);
+                $this->_debugData['success'][] = "Méthode ".$this->_code." bien présente dans le contrat";
             }
         }
-
         return true;
     }
 
-    /**
-     * Get chronopost product code
-     *
-     * @return string
-     */
-    public function getChronoProductCode()
-    {
-        return static::PRODUCT_CODE;
-    }
-
-    /**
-     * Get shipping price
-     *
-     * @param RateRequest $request
-     * @param string      $cartWeight
-     *
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     *
-     * @return bool|float
-     */
-    protected function getShippingPrice(RateRequest $request, $cartWeight)
-    {
-        $saturdaySupplement = $this->getSaturdaySupplement();
-        $corsicaSupplement = (float)$this->_scopeConfig->getValue('chronorelais/tarification/corsica_supplement');
-
-        // Price recovery via WS
+    protected function getShippingPrice(RateRequest $request, $cartWeight) {
         $quickcostEnable = $this->getConfigData('quickcost');
-        if ($quickcostEnable) {
-            $this->debugData['request']['quickcost'] = 1;
-            $quickCostValues = $this->getQuickCostValue($request, $cartWeight);
-            if ($quickCostValues && $quickCostValues->return->errorCode === 0) {
-                $quickcostValue = (float)$quickCostValues->return->amountTTC;
+        $corsicaSupplement = 0;
+        if($quickcostEnable) { /* récupération du prix via WS */
+            $this->_debugData['request']['quickcost'] = 1;
+            $quickCostValues = $this->getQuickCostValue($request,$cartWeight);
+            if ($quickCostValues && $quickCostValues->errorCode == 0) {
+                $quickcost_val = (float) $quickCostValues->amountTTC;
 
-                // Add margin to quickcost
-                if ($quickcostValue !== false) {
-                    $this->debugData['request']['quickcost_value'] = $quickcostValue;
-                    $quickcostValue = $this->addMarginToQuickcost($quickcostValue);
-
-                    return (float)$quickcostValue + $saturdaySupplement;
+                /* Ajout marge au quickcost */
+                if($quickcost_val !== false) {
+                    $this->_debugData['request']['quickcost_value'] = $quickcost_val;
+                    $quickcost_val = $this->addMargeToQuickcost($quickcost_val);
+                    return (float) $quickcost_val;
                 }
             }
+        } else {
+            $this->_debugData['request']['quickcost'] = 0;
+            $corsicaSupplement = (float) $this->_scopeConfig->getValue("chronorelais/tarification/corsica_supplement");
         }
 
-        // Recovery of the price via the price list entered by the customer in BO
+        /* récupération du prix via la grille de prix saisie par le client en BO */
         $config = trim($this->getConfigData('config'));
-        if ($config) {
+        if($config) {
             try {
-                $fees = $this->getFeesConfig($config, $request->getDestCountryId(), $request->getDestPostcode());
-                $gridPrices = $this->parseJsonConfig($fees);
-                if ($request->getDestCountryId() === 'FR' && $request->getDestPostcode() >= 20000 &&
-                    $request->getDestPostcode() < 21000) {
-                    foreach ($gridPrices as $key => $gridPrice) {
-                        $gridPrices[$key] = $gridPrice + $corsicaSupplement;
-                    }
+                $gridPrices = $this->convertStringToArray($config);
+                $price = $this->getPriceFromGrid($gridPrices,$cartWeight);
+                if ($request->getDestCountryId() == 'FR' && $request->getDestPostcode() >= 20000 && $request->getDestPostcode() < 21000) {
+                    $price += $corsicaSupplement;
                 }
-
-                $shippingPrice = $this->getPriceFromGrid($gridPrices, $cartWeight);
-                if ($shippingPrice !== false) {
-                    return $shippingPrice + $saturdaySupplement;
-                }
-            } catch (\Exception $e) {
-                return false;
+                return $price;
+            } catch(\Exception $e) {
+                // Silence will fall
             }
         }
 
-        $this->debugData['error'][] = __('No price found');
-
+        $this->_debugData['error'][] = "Pas de prix trouvé";
         return false;
     }
 
     /**
-     * Get quick cost value
-     *
+     * Convertit la grile poids / prix en array
+     * la grille n'est pas un vrai json car les clés ne sont pas entourées par des guillemets double
+     * @param $string
+     * @return array
+     */
+    protected function convertStringToArray($string) {
+        $string = str_replace(array("{","}"),'',$string);
+        $array = array();
+        $string = explode(",",$string);
+        foreach($string as $value) {
+            $value = explode(":",$value);
+            if(isset($value[0]) && isset($value[1])) {
+                $array[trim($value[0])] = trim($value[1]);
+            }
+        }
+        return $array;
+    }
+
+    /**
+     * Retourne prix par rapport au poids. Si poids du panier > poids max renseigné : pas de prix donc pas de mode de livraison
+     * @param $gridPrices
+     * @param $cartWeight
+     * @return bool
+     */
+    protected function getPriceFromGrid($gridPrices,$cartWeight) {
+        $currentPrice = false;
+
+        $maxWeight = key(array_slice($gridPrices,-1,1,TRUE));
+
+        /* poids du panier > poids max de la grille des prix => on retourne false pour masquer mode de livraison */
+        if($cartWeight > $maxWeight) {
+            $this->_debugData['error'][] = "Pas de prix trouvé dans la grille. Le poids du panier est > au poids max de la grille";
+            return false;
+        }
+
+        foreach ($gridPrices as $weight => $price) {
+            /*if($cartWeight > $weight ) {
+                $currentPrice = (float)$price;
+            } else {
+                break;
+            }*/
+            if($cartWeight <= $weight ) {
+                $currentPrice = (float)$price;
+                break;
+            }
+        }
+        return $currentPrice;
+    }
+
+    /**
      * @param RateRequest $request
-     * @param float       $cartWeight
-     *
+     * @param $cartWeight
      * @return bool|Object
      */
-    protected function getQuickCostValue(RateRequest $request, $cartWeight)
-    {
+    protected function getQuickCostValue(RateRequest $request, $cartWeight) {
+
         $accountNumber = '';
         $accountPassword = '';
-        $contract = $this->helperData->getCarrierContract($this->_code);
-        if ($contract != null) {
+        $contract = $this->_helperData->getCarrierContract($this->_code);
+        if($contract != null) {
             $accountNumber = $contract['number'];
             $accountPassword = $contract['pass'];
         }
@@ -523,195 +470,45 @@ abstract class AbstractChronopost extends AbstractCarrier implements CarrierInte
             $arrCode = $request->getDestCountryId();
         }
 
-        $weightUnit = $this->_scopeConfig->getValue("chronorelais/weightunit/unit");
-        if ($weightUnit == 'g') {
-            $cartWeight = $cartWeight / 1000; // gram to kg
+        $weight_unit = $this->_scopeConfig->getValue("chronorelais/weightunit/unit");
+        if ($weight_unit == 'g') {
+            $cartWeight = $cartWeight / 1000; /* conversion g => kg */
         }
-        $wsParams = [
+        $wsParams = array(
             'accountNumber' => $accountNumber,
-            'password'      => $accountPassword,
-            'depCode'       => $origin_postcode,
-            'arrCode'       => $arrCode,
-            'weight'        => $cartWeight,
-            'productCode'   => $productCode,
-            'type'          => 'M'
-        ];
+            'password' => $accountPassword,
+            'depCode' => $origin_postcode,
+            'arrCode' => $arrCode,
+            'weight' => $cartWeight,
+            'productCode' => $productCode,
+            'type' => 'M'
+        );
+        $this->_debugData['request']['quickcost_params'] = $wsParams;
 
-        $this->debugData['request']['quickcost_params'] = $wsParams;
-        $quickcostUrl = $this->getConfigData("quickcost_url");
+        $quickcost_url = $this->getConfigData("quickcost_url");
 
-        return $this->helperWebservice->getQuickcost($wsParams, $quickcostUrl);
+        return $this->_helperWebservice->getQuickcost($wsParams,$quickcost_url);
     }
 
     /**
-     * Add margin to quick cost
-     *
-     * @param float $quickcostValue
-     *
+     * @param $quickcost_val
+     * @param bool $firstPassage
      * @return false|float|int
      */
-    public function addMarginToQuickcost($quickcostValue)
-    {
+    public function addMargeToQuickcost($quickcost_val, $firstPassage = true) {
+
         $quickcostMarge = $this->getConfigData("quickcost_marge");
         $quickcostMargeType = $this->getConfigData("quickcost_marge_type");
 
-        if ($quickcostMarge) {
-            if ($quickcostMargeType === 'amount') {
-                $quickcostValue += $quickcostMarge;
-                $this->debugData['request']['quickcost_marge'] = $quickcostMarge;
-            } elseif ($quickcostMargeType == 'prcent') {
-                $quickcostValue += $quickcostValue * $quickcostMarge / 100;
-                $this->debugData['request']['quickcost_marge'] = $quickcostMarge . "%";
+        if($quickcostMarge) {
+            if($quickcostMargeType == 'amount') {
+                $quickcost_val += $quickcostMarge;
+                $this->_debugData['request']['quickcost_marge'] = $quickcostMarge;
+            } elseif($quickcostMargeType == 'prcent') {
+                $quickcost_val += $quickcost_val * $quickcostMarge / 100;
+                $this->_debugData['request']['quickcost_marge'] = $quickcostMarge."%";
             }
         }
-
-        return $quickcostValue;
-    }
-
-    /**
-     * Get fees config
-     *
-     * @param string      $config
-     * @param null|string $countryId
-     * @param null|string $postcode
-     * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-     *
-     * @return null|string
-     * @throws Exception
-     */
-    protected function getFeesConfig($config, $countryId = null, $postcode = null)
-    {
-        if (!$countryId) {
-            throw new \Exception((string)__('Country id is required'));
-        }
-
-        $fees = null;
-        $configArray = $this->jsonSerializer->unserialize($config);
-        foreach ($configArray as $item) {
-            if (!isset($item['fees'])) {
-                continue;
-            }
-
-            if (isset($item['destination'])) {
-                $countries = explode(';', $item['destination']);
-                foreach ($countries as $country) {
-                    if (preg_match('/(.*)-\((.+)\)/', $country, $matches)) { // Example: FR-(12*,62400)
-                        if ($matches[1] === $countryId) {
-                            $fees = $item['fees'];
-                        }
-
-                        $postcodesConfig = explode(',', $matches[2]);
-                        foreach ($postcodesConfig as $postcodeConfig) {
-                            if (preg_match('/(.+)\*/', $postcodeConfig, $matches2)) { // Example: 12*
-                                if (strpos($postcode, $matches2[1]) !== false) {
-                                    $fees = null;
-                                }
-                            } elseif ($postcode == $postcodeConfig) { // 62400
-                                $fees = null;
-                            }
-                        }
-                    } elseif ($country === $countryId) { // Example: FR
-                        $fees = $item['fees'];
-                        break 2;
-                    }
-                }
-            } else {
-                $fees = $item['fees'];
-            }
-        }
-
-        if (!$fees) {
-            throw new \Exception('Config of fees is invalid !');
-        }
-
-        return $fees;
-    }
-
-    /**
-     * Convert the weight / price grid to an array
-     *
-     * @param string $fees
-     *
-     * @return array
-     */
-    protected function parseJsonConfig($fees)
-    {
-        $array = [];
-
-        $string = str_replace(['{', '}'], '', $fees);
-        $string = explode(",", $string);
-        foreach ($string as $value) {
-            $value = explode(':', $value);
-            if (isset($value[0]) && $value[0] && isset($value[1]) && $value[1]) {
-                $array[trim($value[0])] = trim($value[1]);
-            }
-        }
-
-        return $array;
-    }
-
-    /**
-     * Returns price in relation to weight. If basket weight > max weight entered: no price so no delivery method
-     *
-     * @param $gridPrices
-     * @param $cartWeight
-     *
-     * @return bool|float
-     */
-    protected function getPriceFromGrid($gridPrices, $cartWeight)
-    {
-        $currentPrice = false;
-
-        $maxWeight = (float)key(array_slice($gridPrices, -1, 1, true));
-        if ($cartWeight > $maxWeight) {
-            $this->debugData['error'][] = __("No price found in the grid. The weight of the basket is greater than the maximum weight of the grid");
-
-            return false;
-        }
-
-        foreach ($gridPrices as $weight => $price) {
-            if ($cartWeight <= $weight) {
-                $currentPrice = (float)$price;
-                break;
-            }
-        }
-
-        return $currentPrice;
-    }
-
-    /**
-     * Method overloaded in other modes if additional price is needed
-     *
-     * @param $price
-     *
-     * @return mixed
-     */
-    public function additionalPrice($price)
-    {
-        return $price;
-    }
-
-    /**
-     * Get method title
-     *
-     * @return false|string
-     */
-    public function getMethodTitle()
-    {
-        return $this->getConfigData('name');
-    }
-
-    /**
-     * Get Saturday supplement
-     *
-     * return float
-     */
-    private function getSaturdaySupplement()
-    {
-        if ($this->checkoutSession->getData('chronopost_saturday_option') === '1') {
-            return (float)$this->_scopeConfig->getValue('chronorelais/saturday/amount');
-        }
-
-        return (float)'0';
+        return $quickcost_val;
     }
 }
