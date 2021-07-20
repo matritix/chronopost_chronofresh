@@ -60,7 +60,7 @@ class ShippingInformationManagement
         $quote = $this->_quoteRepository->getActive($cartId);
         $quote->setRelaisId('');
         $quote->setData('chronopostsrdv_creneaux_info','');
-		// var_dump($this->_checkoutSession->getData("chronopostsrdv_creneaux_info"));
+
         /* Si mode de livraison relais : vérif si point relais coché */
         if(preg_match('/chronorelais/',$methodCode,$matches,PREG_OFFSET_CAPTURE)) {
             $relaisId = $this->_checkoutSession->getData("chronopost_chronorelais_relais_id");
@@ -93,42 +93,13 @@ class ShippingInformationManagement
         } elseif(preg_match('/chronopostsrdv/',$methodCode,$matches,PREG_OFFSET_CAPTURE)) {
             /* Si mode de livraison RDV : vérif si Horaire selectionné */
             $rdvInfo = $this->_checkoutSession->getData("chronopostsrdv_creneaux_info");
-	
             if(!$rdvInfo) {
                 throw new StateException(__('Please select an appointment date'));
             }
 
             /* verification du creneaux choisi */
             $arrayRdvInfo = json_decode($rdvInfo,true);
-			
-			
-			//added chronofreshsrdv
-			$carrierModel = \Chronopost\Chronorelais\Model\Carrier\ChronopostSrdv::CARRIER_CODE;
-			
-			//end added
-			
-            $confirm = $this->_helperWebservice->confirmDeliverySlot($arrayRdvInfo,$carrierModel);
-            if($confirm->return->code != 0) {
-                throw new StateException(__($confirm->return->message));
-            }
-            $arrayRdvInfo['productCode'] = $confirm->return->productServiceV2->productCode;
-            $arrayRdvInfo['serviceCode'] = $confirm->return->productServiceV2->serviceCode;
-            if(isset($confirm->return->productServiceV2->asCode))
-                $arrayRdvInfo['asCode'] = $confirm->return->productServiceV2->asCode;
-            $quote->setData('chronopostsrdv_creneaux_info',json_encode($arrayRdvInfo));
-        } elseif(preg_match('/chronofreshsrdv/',$methodCode,$matches,PREG_OFFSET_CAPTURE)) {
-            /* Si mode de livraison RDV : vérif si Horaire selectionné */
-            $rdvInfo = $this->_checkoutSession->getData("chronopostsrdv_creneaux_info");
-            if(!$rdvInfo) {
-                throw new StateException(__('Please select an appointment date'));
-            }
-
-			//added chronofreshsrdv
-			$carrierModel = \Chronopost\Chronorelais\Model\Carrier\ChronofreshSrdv::CARRIER_CODE;
-			//end added
-            /* verification du creneaux choisi */
-            $arrayRdvInfo = json_decode($rdvInfo,true);
-            $confirm = $this->_helperWebservice->confirmDeliverySlot($arrayRdvInfo,$carrierModel);
+            $confirm = $this->_helperWebservice->confirmDeliverySlot($arrayRdvInfo);
             if($confirm->return->code != 0) {
                 throw new StateException(__($confirm->return->message));
             }
@@ -138,18 +109,7 @@ class ShippingInformationManagement
                 $arrayRdvInfo['asCode'] = $confirm->return->productServiceV2->asCode;
             $quote->setData('chronopostsrdv_creneaux_info',json_encode($arrayRdvInfo));
         }
-		else{
-			$rdvInfo = $this->_checkoutSession->getData("chronopostsrdv_creneaux_info");
-	
-            if(!$rdvInfo) {
-                throw new StateException(__('Please select an appointment date'));
-            }
-				 $arrayRdvInfo = json_decode($rdvInfo,true);
-				$quote->setData('chronopostsrdv_creneaux_info',json_encode($arrayRdvInfo));
-		}
-		
 
-		
         $this->_quoteRepository->save($quote);
     }
 }

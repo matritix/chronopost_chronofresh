@@ -65,11 +65,6 @@ class ShipmentSave
         $shippingMethodCode = isset($shippingMethodCode[1]) ? $shippingMethodCode[1] : $shippingMethodCode[0];
         $dimensions = json_decode($this->_request->getParam('dimensions'), true);
 
-	 //print_r(json_encode($subject->getData()));exit();
-
-	 //CORRECTION
-	 if ($dimensions) {
-
         for($i = 0; $i < count($dimensions); $i++){
             $dimensionsLimit = $dimensions[$i];
             $error = false;
@@ -110,9 +105,6 @@ class ShipmentSave
                 Throw new \Exception ($msg);
             }
         }
-	 
-	 } //Fin si dimensions fournies
-
 
 
 

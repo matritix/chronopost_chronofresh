@@ -76,27 +76,21 @@ class getPlanning extends \Magento\Framework\App\Action\Action
         $result = $this->_resultJsonFactory->create();
 
         $resultData = array();
- 
+
         try {
             $shippingAddressData = $this->getRequest()->getParam('shipping_address');
             //$shippingAddress = $this->_addressFactory->create()->setData($shippingAddressData);
             $shippingAddress = $this->_checkoutSession->getQuote()->getShippingAddress();
             $shippingAddress->addData($shippingAddressData);
             //$shippingAddress->setQuote($this->_checkoutSession->getQuote());
-            $creneaux = $this->_helperWebservice->getPlanning($shippingAddress,$methodCode);
+            $creneaux = $this->_helperWebservice->getPlanning($shippingAddress);
             if($creneaux) {
                 $layout = $this->_layoutFactory->create();
-				//added fresh
-				$template = "Chronopost_Chronorelais::chronopostsrdv_planning.phtml"; 
-				if($methodCode == 'chronofreshsrdv' || $methodCode == 'chronopostsrdv'){
-					$template = "Chronopost_Chronorelais::chronofreshsrdv_planning.phtml";
-				}
-				//end added
                 $content = $layout->createBlock("\Chronopost\Chronorelais\Block\Planning")
                     ->setAddress($shippingAddress)
                     ->setMethodCode($methodCode)
                     ->setCreneaux($creneaux)
-                    ->setTemplate($template)
+                    ->setTemplate("Chronopost_Chronorelais::chronopostsrdv_planning.phtml")
                     ->toHtml();
 
                 $resultData['method_code'] = $methodCode;

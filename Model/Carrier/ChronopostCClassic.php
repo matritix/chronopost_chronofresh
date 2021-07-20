@@ -8,8 +8,7 @@ class ChronopostCClassic extends AbstractChronopost
      */
     protected $_code = 'chronocclassic';
 
-    // const PRODUCT_CODE = '44';
-	const PRODUCT_CODE = '4X';
+    const PRODUCT_CODE = '44';
     const PRODUCT_CODE_STR = 'CClassic';
 
     const CHECK_CONTRACT = true;

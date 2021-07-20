@@ -8,8 +8,7 @@ class Chronopost extends AbstractChronopost
      */
     protected $_code = 'chronopost';
 
-    // const PRODUCT_CODE = '01';
-	const PRODUCT_CODE = '1S';
+    const PRODUCT_CODE = '01';
     const PRODUCT_CODE_STR = '13H';
 
     /* option boite au lettre disponible pour ce mode */

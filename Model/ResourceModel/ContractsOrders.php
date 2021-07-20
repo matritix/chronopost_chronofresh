@@ -9,7 +9,7 @@ use \Magento\Framework\Model\ResourceModel\Db\AbstractDb;
  */
 class ContractsOrders extends AbstractDb
 {
- 
+
     /**
      * Initialize resource model
      *

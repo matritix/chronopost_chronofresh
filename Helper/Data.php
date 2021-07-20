@@ -39,21 +39,6 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     const CHRONOPOST_REVERSE_U_SERVICE = '835'; // for Chronopost Reverse 18
     const CHRONOPOST_REVERSE_DEFAULT_SERVICE = '226'; // for Chronopost Reverse 18
 
-
-    //Choronorelais Fresh settings for productCode
-    const CHRONO_FRESH = '2R'; // for France Chrono Fresh 13 H
-	const CHRONO_FRESHPLUS = '2R'; // for France Chrono Fresh 13 H
-	const CHRONOFRESH_SMD = '2P'; // for Chronopost SAMEDAY
-    const CHRONOFRESH_SRDV = '2E';		
-		
-    // const CHRONO_FRESH_STR = '13H'; // for France
-
-    const CHRONOPOST_DEFAULT_COUNTRY = 'FR';
-    const CHRONOPOST_TRACKING_URL = 'http://wsshipping.chronopost.fr/shipping/services/getReservedSkybill?reservationNumber={trackingNumber}'; 
-    const CHRONOFRESH_SMD_STR = 'SMD'; // for Chronopost SAMEDAY 
-    const CHRONOFRESH_SRDV_STR = 'SRDV'; // for Chronopost Sur Rendez-vous
-	
-	
     /**
      * @var OrderExportStatusCollectionFactory
      */
@@ -456,18 +441,6 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             case 'chronopostdimanche' :
                 $productcode = static::CHRONOPOST_DIM_BAL;
                 break;
-            case 'chronofresh' :
-                $productcode = static::CHRONO_FRESH;
-                break;
-            case 'chronofreshplus' :
-                $productcode = static::CHRONO_FRESHPLUS;
-                break;
-            case 'chronofreshsameday' :
-                $productcode = static::CHRONOFRESH_SMD;
-                break;
-            case 'chronofreshsrdv' :
-                $productcode = static::CHRONOFRESH_SRDV;
-                break;
             default :
                 $productcode = static::CHRONO_POST;
                 break;
@@ -522,18 +495,6 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             case 'chronopostdimanche' :
                 $productcode = static::CHRONOPOST_DIM_BAL;
                 break;
-            case 'chronofresh' :
-                $productcode = static::CHRONO_FRESH;
-                break;
-            case 'chronofreshplus' :
-                $productcode = static::CHRONO_FRESHPLUS;
-                break;
-            case 'chronofreshsameday' :
-                $productcode = static::CHRONOFRESH_SMD;
-                break;
-            case 'chronofreshsrdv' :
-                $productcode = static::CHRONOFRESH_SRDV;
-                break;	 
             default :
                 $productcode = static::CHRONO_POST;
                 break;

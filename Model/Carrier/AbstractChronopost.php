@@ -331,10 +331,6 @@ abstract class AbstractChronopost extends \Magento\Shipping\Model\Carrier\Abstra
      */
     public function validateMethod(RateRequest $request) {
         /* Chronorelais => test Si WS fonctionne */
-		//nimp
-		     return true;
-		
-		
         if(static::CHECK_RELAI_WS) {
             $webservice = $this->_helperWebservice->getPointsRelaisByCp($request->getDestPostcode());
             if($webservice === false) {

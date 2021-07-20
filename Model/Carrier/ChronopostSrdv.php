@@ -9,8 +9,7 @@ class ChronopostSrdv extends AbstractChronopost
      */
     protected $_code = 'chronopostsrdv';
 
-    // const PRODUCT_CODE = '2O';
-	const PRODUCT_CODE = '2E';
+    const PRODUCT_CODE = '2O';
     const CARRIER_CODE = 'chronopostsrdv';
     const PRODUCT_CODE_STR = 'SRDV';
 
@@ -84,8 +83,8 @@ class ChronopostSrdv extends AbstractChronopost
             $_dateRdvEnd = new \DateTime($chronopostsrdv_creneaux_info['deliveryDate']);
             $_dateRdvEnd->setTime($chronopostsrdv_creneaux_info['endHour'],$chronopostsrdv_creneaux_info['endMinutes']);
 
-            // $methodTitle .= ' - '.__('On').' '.$_dateRdvStart->format('d/m/Y');
-            // $methodTitle .= ' '.__('between %1 andpostsrdv %2',$_dateRdvStart->format('H:i'),$_dateRdvEnd->format('H:i'));
+            $methodTitle .= ' - '.__('On').' '.$_dateRdvStart->format('d/m/Y');
+            $methodTitle .= ' '.__('between %1 and %2',$_dateRdvStart->format('H:i'),$_dateRdvEnd->format('H:i'));
         }
         return $methodTitle;
     }

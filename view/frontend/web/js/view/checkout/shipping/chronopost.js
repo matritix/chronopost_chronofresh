@@ -45,21 +45,19 @@ define([
         initialize: function () {
             this._super();
 
-            var self = this; 
+            var self = this;
 
             /* ecouteur sur la variable shippingRates : lorsqu'elle change on verifie les logos chronopost */
             this.shippingRates.subscribe(function (rates) {
                 self.updateChronopostCarriersLogo(rates);
                 self.showHomeIcon = true;
                 self.bindRelais(false, false);
- 
             });
 
             /* ecouteur sur la variable shippingMethod : lorsqu'elle change on verifie si affichage point relais */
             this.shippingMethod.subscribe(function(shippingMethod) {
                 self.showHomeIcon = true;
                 self.bindRelais(shippingMethod, false);
- 
             });
 
             /* resize block rdv mobile */
@@ -129,20 +127,7 @@ define([
             this.resetSessionRelais();
 
             /* reset session RDV */
-			    //added fresh
-				this.resetSessionRdv();
-            // if(shippingMethod){
-				// if(shippingMethod['method_code'].indexOf("chronopostsrdv") || shippingMethod['method_code'].indexOf("chronofreshsrdv")) { 
-				
-				// }
-				// else{
-					// this.resetSessionRdv();
-				// }
-			// } 
-			// else{
-				// this.resetSessionRdv();
-			// }	
-
+            this.resetSessionRdv();
 
             var mapContainer = $('.chronomap_container');
             if(mapContainer.length) {
@@ -288,27 +273,9 @@ define([
 
             }
 
-//for all
-
-if(shippingMethod && typeof shippingMethod['method_code'] != "undefined"){
-if ($('.table-checkout-shipping-method .row .radio').is(':checked')){
-	// console.log("laaaa");
-
-	
-	 
-
-	
-	
-			this.getPlanning(shippingMethod);}
-}
-
             /* Chronopost SRDV */
             if(shippingMethod && typeof shippingMethod['method_code'] != "undefined" && shippingMethod['method_code'].indexOf("chronopostsrdv") !== -1) {
-                // this.getPlanning(shippingMethod);
-            }
-			//added fresh
-			if(shippingMethod && typeof shippingMethod['method_code'] != "undefined" && shippingMethod['method_code'].indexOf("chronofreshsrdv") !== -1) {
-                // this.getPlanning(shippingMethod);
+                this.getPlanning(shippingMethod);
             }
         },
         /* vérifie si la methode fais partie des modes valables */
@@ -404,8 +371,6 @@ if ($('.table-checkout-shipping-method .row .radio').is(':checked')){
                 },
                 type: 'post'
             }).done(function(response) {
-				// console.log(response);
-                if(response.method_code) {  
                 /* show map */
                 var label = $("#label_method_"+response.method_code+"_"+response.method_code);
                 if(label.length) {
@@ -457,14 +422,7 @@ if ($('.table-checkout-shipping-method .row .radio').is(':checked')){
                     $('input.shipping_method_chronopostsrdv').click(function(){
                         self.selectRdvHoraire($(this));
                     });
-                    $('input.shipping_method_chronofreshsrdv').click(function(){
-                        self.selectRdvHoraire($(this));
-                    });
 
-                }
-				            } else  {
-                    Rdv.rdvInfo('');
-                    alert(response.message);
                 }
             }).always(function() {
                 Loader.stopLoader();
@@ -488,40 +446,27 @@ if ($('.table-checkout-shipping-method .row .radio').is(':checked')){
         /* met le chronopostsrdv_creneaux_info mis en session */
         setSessionRdv: function(slotValueJson){
             var self = this;
-			var shippingMethod = this.shippingMethod();
-			// console.log(shippingMethod);
             if(this.xhrSetSessionRdv) {
                 this.xhrSetSessionRdv.abort();
             }
             this.xhrSetSessionRdv = $.ajax({
                 url: this.set_session_rdv_url,
                 data: {
-                    chronopostsrdv_creneaux_info: slotValueJson,
-					 'method_code': shippingMethod['method_code']
+                    chronopostsrdv_creneaux_info: slotValueJson
                 },
                 type: 'post'
             }).done(function(response) {
                 if(response.success) {
-                    /* change RDV info : ce qui la change dans la progress-bar */ 
-						Rdv.rdvInfo(response.rdvInfo);
-			 
+                    /* change RDV info : ce qui la change dans la progress-bar */
+                    Rdv.rdvInfo(response.rdvInfo);
                     var currentShippingMethodTitle = quote.shippingMethod().method_title;
-					// console.log(quote.shippingMethod().method_title);
-                    // currentShippingMethodTitle = self.getBaseShippingMethodTitle(currentShippingMethodTitle);
-                    // quote.shippingMethod().method_title = currentShippingMethodTitle + response.rdvInfo;
-					  quote.shippingMethod().method_title = response.rdvInfo;
+                    currentShippingMethodTitle = self.getBaseShippingMethodTitle(currentShippingMethodTitle);
+                    quote.shippingMethod().method_title = currentShippingMethodTitle + response.rdvInfo;
                     if($('#label_method_chronopostsrdv_chronopostsrdv').length) { /* on rechange le label du mode par rdv */
                         var shippingMethodTitle = $('#label_method_chronopostsrdv_chronopostsrdv').html();
                         shippingMethodTitle = self.getBaseShippingMethodTitle(shippingMethodTitle);
                         $('#label_method_chronopostsrdv_chronopostsrdv').html(shippingMethodTitle + response.rdvInfo);
                     }
-					//added fresh
-					if($('#label_method_chronofreshsrdv_chronofreshsrdv').length) { /* on rechange le label du mode par rdv */
-                        var shippingMethodTitle = $('#label_method_chronofreshsrdv_chronofreshsrdv').html();
-                        shippingMethodTitle = self.getBaseShippingMethodTitle(shippingMethodTitle);
-                        $('#label_method_chronofreshsrdv_chronofreshsrdv').html(shippingMethodTitle + response.rdvInfo);
-                    }
-					//end
                 } else if(response.error) {
                     Rdv.rdvInfo('');
                     alert(response.message);
@@ -532,34 +477,22 @@ if ($('.table-checkout-shipping-method .row .radio').is(':checked')){
         resetSessionRdv: function(){
 
             var shippingMethod = this.shippingMethod();
-            if(shippingMethod) {
-				if(shippingMethod['method_code'].indexOf("chronopostsrdv") || shippingMethod && shippingMethod['method_code'].indexOf("chronofreshsrdv")){
-					var self = this;
-					if (this.xhrResetSessionRdv) {
-						this.xhrResetSessionRdv.abort();
-					}
-					this.xhrResetSessionRdv = $.ajax({
-						url: this.reset_session_rdv_url
-					}).done(function (response) {
-						Rdv.rdvInfo('');
-						if(shippingMethod['method_code'].indexOf("chronopostsrdv")){
-							if ($('#label_method_chronopostsrdv_chronopostsrdv').length) { /* on rechange le label du mode par rdv */
-								var shippingMethodTitle = $('#label_method_chronopostsrdv_chronopostsrdv').html();
-								shippingMethodTitle = self.getBaseShippingMethodTitle(shippingMethodTitle);
-								$('#label_method_chronopostsrdv_chronopostsrdv').html(shippingMethodTitle);
-							}
-						}
-						if(shippingMethod['method_code'].indexOf("chronofreshsrdv")){
-							if ($('#label_method_chronofreshsrdv_chronofreshsrdv').length) { /* on rechange le label du mode par rdv */
-								var shippingMethodTitle = $('#label_method_chronofreshsrdv_chronofreshsrdv').html();
-								shippingMethodTitle = self.getBaseShippingMethodTitle(shippingMethodTitle);
-								$('#label_method_chronofreshsrdv_chronofreshsrdv').html(shippingMethodTitle);
-							}
-						}
-					});
-				}
-			}
-			//added fresh 
+            if(shippingMethod && shippingMethod['method_code'].indexOf("chronopostsrdv")) {
+                var self = this;
+                if (this.xhrResetSessionRdv) {
+                    this.xhrResetSessionRdv.abort();
+                }
+                this.xhrResetSessionRdv = $.ajax({
+                    url: this.reset_session_rdv_url
+                }).done(function (response) {
+                    Rdv.rdvInfo('');
+                    if ($('#label_method_chronopostsrdv_chronopostsrdv').length) { /* on rechange le label du mode par rdv */
+                        var shippingMethodTitle = $('#label_method_chronopostsrdv_chronopostsrdv').html();
+                        shippingMethodTitle = self.getBaseShippingMethodTitle(shippingMethodTitle);
+                        $('#label_method_chronopostsrdv_chronopostsrdv').html(shippingMethodTitle);
+                    }
+                });
+            }
         },
         getBaseShippingMethodTitle: function(title) {
             return title.replace(/- Le \d{2}\/\d{2}\/\d{2,4} entre \d{1,2}:\d{0,2} et \d{1,2}:\d{0,2}/g,'');
